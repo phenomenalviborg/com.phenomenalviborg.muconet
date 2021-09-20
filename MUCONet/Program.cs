@@ -7,34 +7,12 @@ using System.Globalization;
 
 namespace Phenomenal.MUCONet
 {
-	/// <summary>
-	/// MUCOConstants holds shared configuration variables that won't change at runtime.
-	/// </summary>
-	public static class MUCOConstants
-	{
-		// The size of all receive buffers in bytes.
-		public const int RECEIVE_BUFFER_SIZE = 4096;
-	}
+    #region Logging
 
-	/// <summary>
-	/// MUCOServerInfo is used for storeing information about a remote client.
-	/// </summary>
-	public struct MUCOServerInfo
-	{
-	}
-
-	/// <summary>
-	/// MUCOClientInfo is used for storeing information about a remote client.
-	/// </summary>
-	public struct MUCOClientInfo
-	{
-		public Socket socket;
-	}
-
-	/// <summary>
-	/// MUCOLogLevel in an enum containing all supported log verbosity levels.
-	/// </summary>
-	public enum MUCOLogLevel
+    /// <summary>
+    /// MUCOLogLevel in an enum containing all supported log verbosity levels.
+    /// </summary>
+    public enum MUCOLogLevel
 	{
 		Trace = 0,
 		Debug = 1,
@@ -67,7 +45,7 @@ namespace Phenomenal.MUCONet
 	}
 
 	/// <summary>
-	/// MUCOLogger is the logger used in the entire MUCONet libary, client applications can hook custom handlers with the MUCOLogger.LogEvent.
+	/// MUCOLogger is the only logger used in the MUCONet libary, client applications can hook custom handlers with the MUCOLogger.LogEvent.
 	/// </summary>
 	public static class MUCOLogger
     {
@@ -128,7 +106,32 @@ namespace Phenomenal.MUCONet
 			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Fatal, message));
 		}
 	}
-		
+
+	#endregion
+
+	/// <summary>
+	/// MUCOConstants holds shared configuration variables that won't change at runtime.
+	/// </summary>
+	public static class MUCOConstants
+	{
+		// The size of all receive buffers in bytes.
+		public const int RECEIVE_BUFFER_SIZE = 4096;
+	}
+
+	/// <summary>
+	/// MUCOServerInfo is used for storeing information about a remote client.
+	/// </summary>
+	public struct MUCOServerInfo
+	{
+	}
+
+	/// <summary>
+	/// MUCOClientInfo is used for storeing information about a remote client.
+	/// </summary>
+	public struct MUCOClientInfo
+	{
+		public Socket socket;
+	}
 
 	/// <summary>
 	/// MUCOServer handles all "low-level" socket communication with the clients.
