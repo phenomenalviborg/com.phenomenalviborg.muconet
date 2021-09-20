@@ -3,6 +3,7 @@ using System.Text;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Globalization;
 
 namespace Phenomenal.MUCONet
 {
@@ -31,6 +32,105 @@ namespace Phenomenal.MUCONet
 	}
 
 	/// <summary>
+	/// MUCOLogLevel in an enum containing all supported log verbosity levels.
+	/// </summary>
+	public enum MUCOLogLevel
+	{
+		Trace = 0,
+		Debug = 1,
+		Info = 2,
+		Warn = 3,
+		Error = 4,
+		Fatal = 5
+	}
+
+	/// <summary>
+	/// MUCOLogMessage is a struct containing convenient data about a log message.
+	/// </summary>
+	public struct MUCOLogMessage
+	{
+		public DateTime TimeStamp;
+		public MUCOLogLevel LogLevel;
+		public string Message;
+
+		public MUCOLogMessage(MUCOLogLevel logLevel, string message)
+		{
+			TimeStamp = DateTime.Now;
+			LogLevel = logLevel;
+			Message = message;
+		}
+
+		public override string ToString()
+        {
+			return $"[{TimeStamp.ToString("HH:mm:ss.fff", new CultureInfo("es-ES", false))}] [{LogLevel}] MUCONet: {Message}";
+        }
+	}
+
+	/// <summary>
+	/// MUCOLogger is the logger used in the entire MUCONet libary, client applications can hook custom handlers with the MUCOLogger.LogEvent.
+	/// </summary>
+	public static class MUCOLogger
+    {
+		public delegate void LogDelegate(MUCOLogMessage message);
+		public static event LogDelegate LogEvent;
+
+		/// <summary>
+		/// A log level describing events showing step by step execution of your code that can be ignored during the standard operation, but may be useful during extended debugging sessions.
+		/// </summary>
+		/// <param name="message">The message to log.</param>
+		public static void Trace(string message)
+		{
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Trace, message));
+		}
+
+		/// <summary>
+		/// A log level used for events considered to be useful during software debugging when more granular information is needed.
+		/// </summary>
+		/// <param name="message">The message to log.</param>
+		public static void Debug(string message)
+		{
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Debug, message));
+		}
+
+		/// <summary>
+		/// An event happened, the event is purely informative and can be ignored during normal operations.
+		/// </summary>
+		/// <param name="message">The message to log.</param>
+		public static void Info(string message)
+		{
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Info, message));
+		}
+
+		/// <summary>
+		/// Unexpected behavior happened inside the application, but it is continuing its work and the key business features are operating as expected.
+		/// </summary>
+		/// <param name="message">The message to log.</param>
+		public static void Warn(string message)
+		{
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Warn, message));
+		}
+
+		/// <summary>
+		/// One or more functionalities are not working, preventing some functionalities from working correctly.
+		/// </summary>
+		/// <param name="message">The message to log.</param>
+		public static void Error(string message)
+        {
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Error, message));
+		}
+
+		/// <summary>
+		/// One or more key business functionalities are not working and the whole system doesn’t fulfill the business functionalities.
+		/// </summary>
+		/// <param name="message">The message to log.</param>
+		public static void Fatal(string message)
+		{
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Fatal, message));
+		}
+	}
+		
+
+	/// <summary>
 	/// MUCOServer handles all "low-level" socket communication with the clients.
 	/// </summary>
 	public class MUCOServer
@@ -45,6 +145,8 @@ namespace Phenomenal.MUCONet
 		/// </summary>
 		public void Start()
 		{
+			MUCOLogger.Info("Starting server...");
+
 			try
 			{
 				// The AddressFamily enum specifies the addressing scheme that an instance of the Socket class can use. AddressFamily.InterNetwork represents address for IP version 4 (IPv4).
@@ -61,12 +163,14 @@ namespace Phenomenal.MUCONet
 				// Socket::Listen places the Socket in a listening state. The backlog parameter specifies the maximum length of the pending connections queue.
 				m_LocalSocket.Listen(4);
 
+				MUCOLogger.Info($"Successfully started server on port {1000}.");
+
 				// Begin an asynchronous operation to accept an incoming connection attempt.
 				m_LocalSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] Failed to create and/or configure the Socket: {exception.Message}");
+				MUCOLogger.Error($"Failed to create and/or configure the Socket: {exception.Message}");
 			}
 		}
 
@@ -82,14 +186,14 @@ namespace Phenomenal.MUCONet
 				// Begin an asynchronously operation to accept another incoming connection attempt.
 				m_LocalSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
 
-				Console.WriteLine($"Incoming connection from {clientSocket.RemoteEndPoint}...");
+				MUCOLogger.Info($"Incoming connection from {clientSocket.RemoteEndPoint}...");
 
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
 				clientSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientSocket);
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] An error occurred trying to handle an incomming connection: {exception.Message}");
+				MUCOLogger.Error($"An error occurred trying to handle an incomming connection: {exception.Message}");
 			}
 		}
 
@@ -105,7 +209,7 @@ namespace Phenomenal.MUCONet
 				clientSocket.EndReceive(asyncResult);
 
 				// TODO: Handle Data - If command id is LOGIN, register client to array of clients, etc.
-				Console.WriteLine("ReceiveCallback");
+				MUCOLogger.Debug("ReceiveCallback");
 
 				// TMP: Echo
 				List<byte> message = new List<byte>();
@@ -118,7 +222,7 @@ namespace Phenomenal.MUCONet
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] An error occurred trying to handle incoming data: {exception.Message}");
+				MUCOLogger.Error($"An error occurred trying to handle incoming data: {exception.Message}");
 			}
 		}
 
@@ -134,7 +238,7 @@ namespace Phenomenal.MUCONet
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] An error occurred when sending data: {exception.Message}");
+				MUCOLogger.Error($"An error occurred when sending data: {exception.Message}");
 			}
 		}
 
@@ -143,7 +247,8 @@ namespace Phenomenal.MUCONet
 		/// </summary>
 		public void Stop()
 		{
-			// TODO: Impleme
+			MUCOLogger.Info("Shutting down server...");
+			throw new NotImplementedException();
 		}
 	}
 
@@ -175,14 +280,14 @@ namespace Phenomenal.MUCONet
 				IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
 				IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, 1000);
 
-				Console.WriteLine($"[MUCONet|TRACE] Connecting to server {ipEndPoint}");
+				MUCOLogger.Info($"Connecting to server {ipEndPoint}");
 
 				// Begins an asynchronous request for a remote host connection.
 				m_LocalSocket.BeginConnect(ipEndPoint, new AsyncCallback(ConnectCallback), null);
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] Failed to create and/or configure the Socket: {exception.Message}");
+				MUCOLogger.Error($"Failed to create and/or configure the Socket: {exception.Message}");
 			}
 		}
 
@@ -200,7 +305,7 @@ namespace Phenomenal.MUCONet
 					b = true;
 					//Start listening to the data asynchronously
 					m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
-					Console.WriteLine("First time connect");
+					MUCOLogger.Debug("First time connect");
 				}
 
 				// At this point we should have an established connection with the server.
@@ -212,7 +317,7 @@ namespace Phenomenal.MUCONet
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] Failed to accept request from remote host: {exception.Message}");
+				MUCOLogger.Error($"Failed to accept request from remote host: {exception.Message}");
 			}
 		}
 
@@ -227,7 +332,7 @@ namespace Phenomenal.MUCONet
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] An error occurred when sending data: {exception.Message}");
+				MUCOLogger.Error($"An error occurred when sending data: {exception.Message}");
 			}
 		}
 
@@ -240,13 +345,13 @@ namespace Phenomenal.MUCONet
 			{
 				m_LocalSocket.EndReceive(asyncResult);
 
-				Console.WriteLine("MUCOClient::RecieveCallback");
+				MUCOLogger.Debug("MUCOClient::RecieveCallback");
 
 				m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
 			}
 			catch (Exception exception)
 			{
-				Console.WriteLine($"[MUCONet|ERROR] An error occurred while receiving data: {exception.Message}");
+				MUCOLogger.Error($"An error occurred while receiving data: {exception.Message}");
 			}
 		}
 	}
