@@ -14,7 +14,7 @@ namespace Server
 
             // Testing the packet class
             MUCOPacket packet = new MUCOPacket(8);
-            packet.Write(666);
+            packet.WriteInt(666);
             /* ... send over network ... */
             MUCOPacket receivedPacket = new MUCOPacket(packet.ToArray());
             int id = packet.ReadInt();
