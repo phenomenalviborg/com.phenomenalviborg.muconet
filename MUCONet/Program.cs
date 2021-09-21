@@ -107,12 +107,138 @@ namespace Phenomenal.MUCONet
 		}
 	}
 
-	#endregion
+    #endregion
 
-	/// <summary>
-	/// MUCOConstants holds shared configuration variables that won't change at runtime.
-	/// </summary>
-	public static class MUCOConstants
+    #region Packets
+    public class MUCOPacket : IDisposable
+    {
+        private List<byte> m_Data;
+        private int m_ReadOffset;
+
+        public MUCOPacket(int id)
+        {
+            m_Data = new List<byte>();
+            m_ReadOffset = 0;
+
+            Write(id);
+        }
+
+        public MUCOPacket(byte[] data)
+        {
+            m_Data = new List<byte>();
+            m_ReadOffset = 0;
+
+			Write(data);
+        }
+
+		public byte[] ToArray()
+		{
+			return m_Data.ToArray();
+		}
+
+		// Functions for writing data.
+		public void Write(byte[] value)
+		{
+			m_Data.AddRange(value);
+		}
+
+		public void Write(int value)
+		{
+			m_Data.AddRange(BitConverter.GetBytes(value));
+		}
+
+		public void Write(float value)
+		{
+			m_Data.AddRange(BitConverter.GetBytes(value));
+		}
+
+		/// <summary>
+		/// Adds the specified string as well as an int representing the string length to the packet data.
+		/// </summary>
+		/// <param name="value">To string to add.</param>
+		public void Write(string value)
+		{
+			Write(value.Length);
+			m_Data.AddRange(Encoding.ASCII.GetBytes(value));
+		}
+
+		// Functions for reading data
+		public byte[] ReadBytes(int length, bool updateReadOffset = true)
+		{
+			if (m_Data.Count >= m_ReadOffset + length)
+            {
+				byte[] value = m_Data.GetRange(m_ReadOffset, length).ToArray();
+				if (updateReadOffset)
+                {
+					m_ReadOffset += length;
+                }
+				return value;
+            }
+			else
+            {
+				MUCOLogger.Error("Could not read value of type 'byte[]', value was out of range.");
+				return null;
+            }
+		}
+
+		public int ReadInt(bool updateReadOffset = true)
+		{
+			if (m_Data.Count >= m_ReadOffset + sizeof(int))
+			{
+				int value = BitConverter.ToInt32(m_Data.ToArray(), m_ReadOffset);
+				if (updateReadOffset)
+				{
+					m_ReadOffset += sizeof(int);
+				}
+				return value;
+			}
+			else
+			{
+				MUCOLogger.Error("Could not read value of type 'int', value was out of range.");
+				return 0;
+			}
+		}
+
+		public float ReadFloat(bool updateReadOffset = true)
+		{
+			throw new NotImplementedException();
+		}
+
+		public string ReadString(bool updateReadOffset = true)
+		{
+			throw new NotImplementedException();
+		}
+
+		// Implement the IDisposable
+		private bool m_Disposed = false;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!m_Disposed)
+            {
+                if (disposing)
+                {
+					m_Data = null;
+					m_ReadOffset = 0;
+                }
+
+				m_Disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+    }
+    #endregion
+
+
+/// <summary>
+/// MUCOConstants holds shared configuration variables that won't change at runtime.
+/// </summary>
+public static class MUCOConstants
 	{
 		// The size of all receive buffers in bytes.
 		public const int RECEIVE_BUFFER_SIZE = 4096;
