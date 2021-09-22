@@ -282,10 +282,10 @@ namespace Phenomenal.MUCONet
     #endregion
 
 
-/// <summary>
-/// MUCOConstants holds shared configuration variables that won't change at runtime.
-/// </summary>
-public static class MUCOConstants
+	/// <summary>
+	/// MUCOConstants holds shared configuration variables that won't change at runtime.
+	/// </summary>
+	public static class MUCOConstants
 	{
 		// The size of all receive buffers in bytes.
 		public const int RECEIVE_BUFFER_SIZE = 4096;
@@ -303,7 +303,8 @@ public static class MUCOConstants
 	/// </summary>
 	public struct MUCOClientInfo
 	{
-		public Socket socket;
+		public int UniqueIdentifier;
+		public Socket RemoteSocket;
 	}
 
 	/// <summary>
@@ -311,10 +312,11 @@ public static class MUCOConstants
 	/// </summary>
 	public class MUCOServer
 	{
-		public List<MUCOClientInfo> ClientInfo { get; private set; } = new List<MUCOClientInfo>();
+		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
-		private Socket m_LocalSocket;
+		private Socket m_LocalSocket = null;
+		private int m_PlayerIDCounter = 0;
 
 		/// <summary>
 		/// MUCOServer::Start is responsible for starting the server.
@@ -364,8 +366,15 @@ public static class MUCOConstants
 
 				MUCOLogger.Info($"Incoming connection from {clientSocket.RemoteEndPoint}...");
 
+				m_PlayerIDCounter++;
+				
+				MUCOClientInfo clientInfo = new MUCOClientInfo();
+				clientInfo.UniqueIdentifier = m_PlayerIDCounter;
+				clientInfo.RemoteSocket = clientSocket;
+				ClientInfo.Add(clientInfo.UniqueIdentifier, clientInfo);
+
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
-				clientSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientSocket);
+				clientSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
 			}
 			catch (Exception exception)
 			{
@@ -381,20 +390,20 @@ public static class MUCOConstants
 			try
 			{
 				// Grab the socket from the AsyncState, this is the "Object" parameter, the last parameter, passed into the Socket::BeginReceive method.
-				Socket clientSocket = (Socket)asyncResult.AsyncState;
-				clientSocket.EndReceive(asyncResult);
+				MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState;
+				clientInfo.RemoteSocket.EndReceive(asyncResult);
 
 				// TODO: Handle Data - If command id is LOGIN, register client to array of clients, etc.
 				MUCOLogger.Debug("ReceiveCallback");
 
 				// TMP: Echo
-				List<byte> message = new List<byte>();
+				/*List<byte> message = new List<byte>();
 				message.AddRange(Encoding.UTF8.GetBytes("Test message"));
 				byte[] byteArray = message.ToArray();
-				clientSocket.BeginSend(byteArray, 0, message.Count, SocketFlags.None, new AsyncCallback(SendCallback), clientSocket);
+				clientSocket.BeginSend(byteArray, 0, message.Count, SocketFlags.None, new AsyncCallback(SendCallback), clientSocket);*/
 
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
-				clientSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientSocket);
+				clientInfo.RemoteSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
 			}
 			catch (Exception exception)
 			{
@@ -409,8 +418,8 @@ public static class MUCOConstants
 		{
 			try
 			{
-				Socket client = (Socket)asyncResult.AsyncState;
-				client.EndSend(asyncResult);
+				MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState; ;
+				clientInfo.RemoteSocket.EndSend(asyncResult);
 			}
 			catch (Exception exception)
 			{
@@ -425,6 +434,34 @@ public static class MUCOConstants
 		{
 			MUCOLogger.Info("Shutting down server...");
 			throw new NotImplementedException();
+		}
+
+		public void SendPacketToAll(MUCOPacket packet, bool reliable = true)
+        {
+			if (reliable)
+            {
+				foreach (KeyValuePair<int, MUCOClientInfo> keyValuePair in ClientInfo)
+                {
+					SendPacket(keyValuePair.Value, packet, true);
+                }
+            }
+			else
+            {
+				throw new NotImplementedException();
+            }
+        }
+
+		private void SendPacket(MUCOClientInfo receiver, MUCOPacket packet, bool reliable = true)
+        {
+			if (reliable)
+            {
+				MUCOLogger.Trace($"Sending packet to client {receiver.UniqueIdentifier} ({receiver.RemoteSocket.RemoteEndPoint})");
+				receiver.RemoteSocket.BeginSend(packet.ToArray(), 0, packet.GetSize(), SocketFlags.None, new AsyncCallback(SendCallback), receiver);
+			}
+			else
+            {
+				throw new NotImplementedException();
+			}
 		}
 	}
 
@@ -476,20 +513,9 @@ public static class MUCOConstants
 			{
 				m_LocalSocket.EndConnect(asyncResult);
 
-				if (b == false)
-				{
-					b = true;
-					//Start listening to the data asynchronously
-					m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
-					MUCOLogger.Debug("First time connect");
-				}
+				MUCOLogger.Info("Connection was successfully established with the server.");
 
-				// At this point we should have an established connection with the server.
-				// So let's try to send a message...
-				List<byte> message = new List<byte>();
-				message.AddRange(Encoding.UTF8.GetBytes("Message from client!"));
-				byte[] byteArray = message.ToArray();
-				m_LocalSocket.BeginSend(byteArray, 0, message.Count, SocketFlags.None, new AsyncCallback(SendCallback), null);
+				m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
 			}
 			catch (Exception exception)
 			{
@@ -528,6 +554,19 @@ public static class MUCOConstants
 			catch (Exception exception)
 			{
 				MUCOLogger.Error($"An error occurred while receiving data: {exception.Message}");
+			}
+		}
+
+		public void SendPacket(MUCOPacket packet, bool reliable = true)
+		{
+			if (reliable)
+			{
+				MUCOLogger.Trace($"Sending a packet to the server.");
+				m_LocalSocket.BeginSend(packet.ToArray(), 0, packet.GetSize(), SocketFlags.None, new AsyncCallback(SendCallback), null);
+			}
+			else
+			{
+				throw new NotImplementedException();
 			}
 		}
 	}
