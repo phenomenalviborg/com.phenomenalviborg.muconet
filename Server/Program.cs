@@ -25,7 +25,7 @@ namespace Server
 
             while (true)
             {
-                if(Console.ReadKey().Key == ConsoleKey.D1)
+                if (Console.ReadKey().Key == ConsoleKey.D1)
                 {
                     MUCOPacket packet = new MUCOPacket(8);
                     packet.WriteInt(1234);

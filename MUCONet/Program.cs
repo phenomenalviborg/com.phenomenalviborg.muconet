@@ -156,7 +156,7 @@ namespace Phenomenal.MUCONet
 		/// </summary>
 		public void WriteLength()
 		{
-			m_Data.InsertRange(0, BitConverter.GetBytes(GetSize()));
+			m_Data.InsertRange(0, BitConverter.GetBytes(GetSize() + sizeof(int)));
 		}
 
 		/// <summary>
@@ -166,6 +166,15 @@ namespace Phenomenal.MUCONet
 		public int UnreadLength()
 		{
 			return GetSize() - m_ReadOffset;
+		}
+
+		/// <summary>
+		/// Sets the read offset to the specified offset.
+		/// </summary>
+		/// <param name="readOffset">The new read offset.</param>
+		public void SetReadOffset(int readOffset)
+        {
+			m_ReadOffset = readOffset;
 		}
 
 		/// <summary>
@@ -316,8 +325,17 @@ namespace Phenomenal.MUCONet
             GC.SuppressFinalize(this);
         }
     }
-    #endregion
+	#endregion
 
+	public enum MUCOInternalServerPacketIdentifiers
+	{
+		Welcome = -1,
+    }
+
+	public enum MUCOInternalClientPacketIdentifiers
+	{
+		WelcomeRecived = -1,
+	}
 
 	/// <summary>
 	/// MUCOConstants holds shared configuration variables that won't change at runtime.
@@ -351,10 +369,23 @@ namespace Phenomenal.MUCONet
 	{
 		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 
+		public delegate void PacketHandler(MUCOPacket packet);
+		public Dictionary<MUCOInternalClientPacketIdentifiers, PacketHandler> PacketHandlers = new Dictionary<MUCOInternalClientPacketIdentifiers, PacketHandler>();
+
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private MUCOPacket m_ReceiveData = new MUCOPacket();
 		private Socket m_LocalSocket = null;
 		private int m_PlayerIDCounter = 0;
+
+		public MUCOServer()
+        {
+			PacketHandlers.Add(MUCOInternalClientPacketIdentifiers.WelcomeRecived, HandleWelcomeReceived);
+		}
+
+		private void HandleWelcomeReceived(MUCOPacket packet)
+        {
+			MUCOLogger.Info("Welcome Received");
+		}
 
 		/// <summary>
 		/// MUCOServer::Start is responsible for starting the server.
@@ -411,6 +442,11 @@ namespace Phenomenal.MUCONet
 				clientInfo.RemoteSocket = clientSocket;
 				ClientInfo.Add(clientInfo.UniqueIdentifier, clientInfo);
 
+				// Send welcome packet
+				MUCOPacket welcomePacket = new MUCOPacket((int)MUCOInternalServerPacketIdentifiers.Welcome);
+				welcomePacket.WriteInt(clientInfo.UniqueIdentifier);
+				SendPacket(clientInfo, welcomePacket);
+
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
 				clientSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
 			}
@@ -427,26 +463,20 @@ namespace Phenomenal.MUCONet
 		{
 			try
 			{
-				// Grab the socket from the AsyncState, this is the "Object" parameter, the last parameter, passed into the Socket::BeginReceive method.
 				MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState;
 				int bytesReceived = clientInfo.RemoteSocket.EndReceive(asyncResult);
 
-				// TODO: Handle Data - If command id is LOGIN, register client to array of clients, etc.
-
+				MUCOLogger.Trace($"Received {bytesReceived}  bytes from {clientInfo.RemoteSocket.RemoteEndPoint}.");
+					
 				byte[] dataReceived = new byte[bytesReceived];
 				Array.Copy(m_ReceiveBuffer, dataReceived, bytesReceived);
 
-				bool packetCompleted = HandleData(dataReceived);
-				if (packetCompleted)
-				{
-					m_ReceiveData.Reset();
-				}
-
-				// TMP: Echo
-				/*List<byte> message = new List<byte>();
-				message.AddRange(Encoding.UTF8.GetBytes("Test message"));
-				byte[] byteArray = message.ToArray();
-				clientSocket.BeginSend(byteArray, 0, message.Count, SocketFlags.None, new AsyncCallback(SendCallback), clientSocket);*/
+				// FIXME: Should i take care of stiching packet segment or does the standard do this for me?
+				// From my tests it seems like the only reason a packet would be split is the receive buffer size?..
+				m_ReceiveData = new MUCOPacket(dataReceived);
+				MUCOLogger.Trace($"Received {bytesReceived} out of {m_ReceiveData.ReadInt()} bytes.");
+				m_ReceiveData.SetReadOffset(0);
+				HandlePacket(m_ReceiveData);
 
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
 				clientInfo.RemoteSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
@@ -457,51 +487,26 @@ namespace Phenomenal.MUCONet
 			}
 		}
 
-		private bool HandleData(byte[] data)
+		private void HandlePacket(MUCOPacket packet)
 		{
-			int packetLenght = 0;
+			int size = packet.ReadInt();
+			int packetID = packet.ReadInt();
 
-			m_ReceiveData.WriteBytes(data);
+			MUCOLogger.Trace($"Handleing packet new packet. Packet size: {size}, packet id: {packetID}.");
 
-			// Get the size; the first int in every packet.
-			if (m_ReceiveData.UnreadLength() >= sizeof(int))
-			{
-				packetLenght = m_ReceiveData.ReadInt();
-				if (packetLenght <= 0)
-				{
-					return true;
-				}
+			if (PacketHandlers.ContainsKey((MUCOInternalClientPacketIdentifiers)packetID))
+            {
+				PacketHandlers[(MUCOInternalClientPacketIdentifiers)packetID](packet);
 			}
-
-			while (packetLenght > 0 && packetLenght <= m_ReceiveData.UnreadLength())
-			{
-				byte[] packetBytes = m_ReceiveData.ReadBytes(packetLenght);
-
-				using (MUCOPacket packet = new MUCOPacket(packetBytes))
-				{
-					int packetID = packet.ReadInt();
-					MUCOLogger.Debug($"HANDLE PACKET WITH ID: {packetID}");
-				}
-
-				packetLenght = 0;
-
-				if (m_ReceiveData.UnreadLength() >= 4)
-				{
-					packetLenght = m_ReceiveData.ReadInt();
-					if (packetLenght <= 0)
-					{
-						return true;
-					}
-				}
-			}
-
-			return false;
+			else
+            {
+				MUCOLogger.Warn($"Failed to find package handler for packet with identifier: {packetID}");
+            }
 		}
 
-
 		/// <summary>
-			/// MUCOServer::SendCallback is an asynchronous callback used when sending data.
-			/// </summary>
+		/// MUCOServer::SendCallback is an asynchronous callback used when sending data.
+		/// </summary>
 		private void SendCallback(IAsyncResult asyncResult)
 		{
 			try
@@ -561,10 +566,27 @@ namespace Phenomenal.MUCONet
 	{
 		public MUCOServerInfo ServerInfo { get; private set; }
 
+		public delegate void PacketHandler(MUCOPacket packet);
+		public Dictionary<MUCOInternalServerPacketIdentifiers, PacketHandler> PacketHandlers = new Dictionary<MUCOInternalServerPacketIdentifiers, PacketHandler>();
+
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private Socket m_LocalSocket;
 		private MUCOPacket m_ReceiveData = new MUCOPacket();
-		private bool b = false;
+
+		public MUCOClient()
+        {
+			PacketHandlers.Add(MUCOInternalServerPacketIdentifiers.Welcome, HandleWelcome);
+		}
+
+		private void HandleWelcome(MUCOPacket packet)
+        {
+			int assignedClientID = packet.ReadInt();
+			MUCOLogger.Info($"Welcome, {assignedClientID}");
+
+			MUCOPacket welcomeRecivedPacket = new MUCOPacket((int)MUCOInternalClientPacketIdentifiers.WelcomeRecived);
+			welcomeRecivedPacket.WriteInt(assignedClientID);
+			SendPacket(welcomeRecivedPacket);
+		}
 
 		/// <summary>
 		/// MUCOClient::Start is responsible for starting the server.
@@ -638,20 +660,17 @@ namespace Phenomenal.MUCONet
 				int bytesReceived = m_LocalSocket.EndReceive(asyncResult);
 
 				MUCOLogger.Trace($"Received {bytesReceived} bytes from the server.");
-				
+
 				byte[] dataReceived = new byte[bytesReceived];
 				Array.Copy(m_ReceiveBuffer, dataReceived, bytesReceived);
 
-				bool packetCompleted = HandleData(dataReceived);
-				if (packetCompleted)
-                {
-					m_ReceiveData.Reset();
-				}
 
-				/*m_ReceiveData = new MUCOPacket(dataReceived);
-				int id = m_ReceiveData.ReadInt();
-				int data = m_ReceiveData.ReadInt();
-				MUCOLogger.Trace($"Data from server: {data}");*/
+				// FIXME: Should i take care of stiching packet segment or does the standard do this for me?
+				// From my tests it seems like the only reason a packet would be split is the receive buffer size?..
+				m_ReceiveData = new MUCOPacket(dataReceived);
+				MUCOLogger.Trace($"Received {bytesReceived} out of {m_ReceiveData.ReadInt()} bytes.");
+				m_ReceiveData.SetReadOffset(0);
+				HandlePacket(m_ReceiveData);
 
 				m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
 			}
@@ -661,50 +680,21 @@ namespace Phenomenal.MUCONet
 			}
 		}
 
-		private bool HandleData(byte[] data)
-        {
-			int packetLenght = 0;
+		private void HandlePacket(MUCOPacket packet)
+		{
+			int size = packet.ReadInt();
+			int packetID = packet.ReadInt();
 
-			m_ReceiveData.WriteBytes(data);
+			MUCOLogger.Trace($"Handleing packet new packet. Packet size: {size}, packet id: {packetID}.");
 
-			// Get the size; the first int in every packet.
-			if (m_ReceiveData.UnreadLength() >= sizeof(int))
+			if (PacketHandlers.ContainsKey((MUCOInternalServerPacketIdentifiers)packetID))
 			{
-				packetLenght = m_ReceiveData.ReadInt();
-				if (packetLenght <= 0)
-				{
-					return true;
-				}
+				PacketHandlers[(MUCOInternalServerPacketIdentifiers)packetID](packet);
 			}
-
-			while (packetLenght > 0 && packetLenght <= m_ReceiveData.UnreadLength())
+			else
 			{
-				byte[] packetBytes = m_ReceiveData.ReadBytes(packetLenght);
-		
-				using (MUCOPacket packet = new MUCOPacket(packetBytes))
-				{
-					int packetID = packet.ReadInt();
-					MUCOLogger.Debug($"HANDLE PACKET WITH ID: {packetID}");
-				}
-
-				packetLenght = 0;
-
-				if (m_ReceiveData.UnreadLength() >= 4)
-				{
-					packetLenght = m_ReceiveData.ReadInt();
-					if (packetLenght <= 0)
-					{
-						return true;
-					}
-				}
+				MUCOLogger.Warn($"Failed to find package handler for packet with identifier: {packetID}");
 			}
-
-			if (packetLenght <= 1)
-			{
-				return true;
-			}
-
-			return false;
 		}
 
 		public void SendPacket(MUCOPacket packet, bool reliable = true)

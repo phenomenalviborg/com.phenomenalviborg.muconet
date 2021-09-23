@@ -3,14 +3,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30517.126
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MUCONet", "MUCONet\MUCONet.csproj", "{2FB91688-ACEC-48A4-9300-0668DE7BEA9D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MUCONet", "MUCONet\MUCONet.csproj", "{2FB91688-ACEC-48A4-9300-0668DE7BEA9D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{8C95E331-1030-4BF9-84FA-A9A8FB33AEE5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Client", "Client\Client.csproj", "{8C95E331-1030-4BF9-84FA-A9A8FB33AEE5}"
 	ProjectSection(ProjectDependencies) = postProject
 		{2FB91688-ACEC-48A4-9300-0668DE7BEA9D} = {2FB91688-ACEC-48A4-9300-0668DE7BEA9D}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{3419EA22-53B3-4E5A-9253-741620FF0EEA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Server", "Server\Server.csproj", "{3419EA22-53B3-4E5A-9253-741620FF0EEA}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8C95E331-1030-4BF9-84FA-A9A8FB33AEE5} = {8C95E331-1030-4BF9-84FA-A9A8FB33AEE5}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
