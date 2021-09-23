@@ -116,11 +116,21 @@ namespace Phenomenal.MUCONet
         private int m_ReadOffset;
 
 		/// <summary>
+		/// Constructs a new empty MUCOPacket (without an id).
+		/// </summary>
+		/// <param name="data">The initial packet data.</param>
+		public MUCOPacket()
+		{
+			m_Data = new List<byte>();
+			m_ReadOffset = 0;
+		}
+
+		/// <summary>
 		/// Constructs a MUCOPacket and adds the specified int identifier field to the start of the packet data.
 		/// This will primarily be used when creating outgoing packets.
 		/// </summary>
 		/// <param name="data">The initial packet data.</param>
-        public MUCOPacket(int id)
+		public MUCOPacket(int id)
         {
             m_Data = new List<byte>();
             m_ReadOffset = 0;
@@ -142,6 +152,23 @@ namespace Phenomenal.MUCONet
         }
 
 		/// <summary>
+		/// Inserts the packet size at the start of the packet data.
+		/// </summary>
+		public void WriteLength()
+		{
+			m_Data.InsertRange(0, BitConverter.GetBytes(GetSize()));
+		}
+
+		/// <summary>
+		/// Gets the unread length of the buffer.
+		/// </summary>
+		/// <returns>The size of the remaining (unread) part of the buffer</returns>
+		public int UnreadLength()
+		{
+			return GetSize() - m_ReadOffset;
+		}
+
+		/// <summary>
 		/// Gets the size of the packet data.
 		/// </summary>
 		/// <returns>The size of the packet data in bytes.</returns>
@@ -157,6 +184,16 @@ namespace Phenomenal.MUCONet
 		public byte[] ToArray()
 		{
 			return m_Data.ToArray();
+		}
+
+		/// <summary>
+		/// Resets the packet to allow it to be reused.
+		/// </summary>
+		/// <param name="_shouldReset"></param>
+		public void Reset()
+		{
+			m_Data.Clear();
+			m_ReadOffset = 0;
 		}
 
 		/// <summary>
@@ -315,6 +352,7 @@ namespace Phenomenal.MUCONet
 		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
+		private MUCOPacket m_ReceiveData = new MUCOPacket();
 		private Socket m_LocalSocket = null;
 		private int m_PlayerIDCounter = 0;
 
@@ -391,10 +429,18 @@ namespace Phenomenal.MUCONet
 			{
 				// Grab the socket from the AsyncState, this is the "Object" parameter, the last parameter, passed into the Socket::BeginReceive method.
 				MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState;
-				clientInfo.RemoteSocket.EndReceive(asyncResult);
+				int bytesReceived = clientInfo.RemoteSocket.EndReceive(asyncResult);
 
 				// TODO: Handle Data - If command id is LOGIN, register client to array of clients, etc.
-				MUCOLogger.Debug("ReceiveCallback");
+
+				byte[] dataReceived = new byte[bytesReceived];
+				Array.Copy(m_ReceiveBuffer, dataReceived, bytesReceived);
+
+				bool packetCompleted = HandleData(dataReceived);
+				if (packetCompleted)
+				{
+					m_ReceiveData.Reset();
+				}
 
 				// TMP: Echo
 				/*List<byte> message = new List<byte>();
@@ -411,9 +457,51 @@ namespace Phenomenal.MUCONet
 			}
 		}
 
+		private bool HandleData(byte[] data)
+		{
+			int packetLenght = 0;
+
+			m_ReceiveData.WriteBytes(data);
+
+			// Get the size; the first int in every packet.
+			if (m_ReceiveData.UnreadLength() >= sizeof(int))
+			{
+				packetLenght = m_ReceiveData.ReadInt();
+				if (packetLenght <= 0)
+				{
+					return true;
+				}
+			}
+
+			while (packetLenght > 0 && packetLenght <= m_ReceiveData.UnreadLength())
+			{
+				byte[] packetBytes = m_ReceiveData.ReadBytes(packetLenght);
+
+				using (MUCOPacket packet = new MUCOPacket(packetBytes))
+				{
+					int packetID = packet.ReadInt();
+					MUCOLogger.Debug($"HANDLE PACKET WITH ID: {packetID}");
+				}
+
+				packetLenght = 0;
+
+				if (m_ReceiveData.UnreadLength() >= 4)
+				{
+					packetLenght = m_ReceiveData.ReadInt();
+					if (packetLenght <= 0)
+					{
+						return true;
+					}
+				}
+			}
+
+			return false;
+		}
+
+
 		/// <summary>
-		/// MUCOServer::SendCallback is an asynchronous callback used when sending data.
-		/// </summary>
+			/// MUCOServer::SendCallback is an asynchronous callback used when sending data.
+			/// </summary>
 		private void SendCallback(IAsyncResult asyncResult)
 		{
 			try
@@ -456,6 +544,7 @@ namespace Phenomenal.MUCONet
 			if (reliable)
             {
 				MUCOLogger.Trace($"Sending packet to client {receiver.UniqueIdentifier} ({receiver.RemoteSocket.RemoteEndPoint})");
+				packet.WriteLength();
 				receiver.RemoteSocket.BeginSend(packet.ToArray(), 0, packet.GetSize(), SocketFlags.None, new AsyncCallback(SendCallback), receiver);
 			}
 			else
@@ -474,6 +563,7 @@ namespace Phenomenal.MUCONet
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private Socket m_LocalSocket;
+		private MUCOPacket m_ReceiveData = new MUCOPacket();
 		private bool b = false;
 
 		/// <summary>
@@ -545,9 +635,23 @@ namespace Phenomenal.MUCONet
 		{
 			try
 			{
-				m_LocalSocket.EndReceive(asyncResult);
+				int bytesReceived = m_LocalSocket.EndReceive(asyncResult);
 
-				MUCOLogger.Debug("MUCOClient::RecieveCallback");
+				MUCOLogger.Trace($"Received {bytesReceived} bytes from the server.");
+				
+				byte[] dataReceived = new byte[bytesReceived];
+				Array.Copy(m_ReceiveBuffer, dataReceived, bytesReceived);
+
+				bool packetCompleted = HandleData(dataReceived);
+				if (packetCompleted)
+                {
+					m_ReceiveData.Reset();
+				}
+
+				/*m_ReceiveData = new MUCOPacket(dataReceived);
+				int id = m_ReceiveData.ReadInt();
+				int data = m_ReceiveData.ReadInt();
+				MUCOLogger.Trace($"Data from server: {data}");*/
 
 				m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
 			}
@@ -557,11 +661,59 @@ namespace Phenomenal.MUCONet
 			}
 		}
 
+		private bool HandleData(byte[] data)
+        {
+			int packetLenght = 0;
+
+			m_ReceiveData.WriteBytes(data);
+
+			// Get the size; the first int in every packet.
+			if (m_ReceiveData.UnreadLength() >= sizeof(int))
+			{
+				packetLenght = m_ReceiveData.ReadInt();
+				if (packetLenght <= 0)
+				{
+					return true;
+				}
+			}
+
+			while (packetLenght > 0 && packetLenght <= m_ReceiveData.UnreadLength())
+			{
+				byte[] packetBytes = m_ReceiveData.ReadBytes(packetLenght);
+		
+				using (MUCOPacket packet = new MUCOPacket(packetBytes))
+				{
+					int packetID = packet.ReadInt();
+					MUCOLogger.Debug($"HANDLE PACKET WITH ID: {packetID}");
+				}
+
+				packetLenght = 0;
+
+				if (m_ReceiveData.UnreadLength() >= 4)
+				{
+					packetLenght = m_ReceiveData.ReadInt();
+					if (packetLenght <= 0)
+					{
+						return true;
+					}
+				}
+			}
+
+			if (packetLenght <= 1)
+			{
+				return true;
+			}
+
+			return false;
+		}
+
 		public void SendPacket(MUCOPacket packet, bool reliable = true)
 		{
+
 			if (reliable)
 			{
 				MUCOLogger.Trace($"Sending a packet to the server.");
+				packet.WriteLength();
 				m_LocalSocket.BeginSend(packet.ToArray(), 0, packet.GetSize(), SocketFlags.None, new AsyncCallback(SendCallback), null);
 			}
 			else
