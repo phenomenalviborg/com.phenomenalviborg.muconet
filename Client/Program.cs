@@ -3,30 +3,52 @@ using Phenomenal.MUCONet;
 
 namespace Client
 {
-    class Program
+    enum ServerPackets : int
     {
-        static void Main(string[] args)
+        HelloFromServer
+    }
+
+    enum ClientPackets : int
+    {
+        HelloFromClient
+    }
+
+    class ClientProgram
+    {
+        public ClientProgram()
         {
             MUCOLogger.LogEvent += Log;
 
             MUCOClient client = new MUCOClient();
+            client.RegisterPacketHandler((int)ServerPackets.HelloFromServer, HandleHelloFromServer);
             client.Connect();
 
-            while (true) 
+            while (true)
             {
-                if (Console.ReadKey().Key == ConsoleKey.D1)
+                if (Console.ReadKey(true).Key == ConsoleKey.D1)
                 {
-                    MUCOPacket packet = new MUCOPacket(8);
-                    packet.WriteInt(4321);
-
+                    MUCOPacket packet = new MUCOPacket((int)ClientPackets.HelloFromClient);
                     client.SendPacket(packet, true);
                 }
             }
         }
 
+        private void HandleHelloFromServer(MUCOPacket packet)
+        {
+            Console.WriteLine("HelloFromServer");
+        }
+
         private static void Log(MUCOLogMessage message)
         {
             Console.WriteLine(message);
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            ClientProgram client = new ClientProgram();  
         }
     }
 }

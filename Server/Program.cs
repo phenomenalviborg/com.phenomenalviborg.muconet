@@ -4,40 +4,53 @@ using Phenomenal.MUCONet;
 
 namespace Server
 {
-    class Program
+    enum ServerPackets : int
     {
-        static void Main(string[] args)
+        HelloFromServer
+    }
+
+    enum ClientPackets : int
+    {
+        HelloFromClient
+    }
+
+
+    class ServerProgram
+    {
+        public ServerProgram()
         {
             MUCOLogger.LogEvent += Log;
 
             MUCOServer server = new MUCOServer();
+            server.RegisterPacketHandler((int)ClientPackets.HelloFromClient, HandleHelloFromClient);
             server.Start();
-
-            /*// Testing the packet class
-            MUCOPacket packet = new MUCOPacket(8);
-            packet.WriteInt(666);*/
-            /* ... send over network ... */
-            /*MUCOPacket receivedPacket = new MUCOPacket(packet.ToArray());
-            int id = packet.ReadInt();
-            int data = packet.ReadInt();
-            int outOfRangeData = packet.ReadInt(); // Should give error, and return 0, but not crash.
-            Console.WriteLine($"ID: {id} | Data: {data}, Out of range data: {outOfRangeData}");*/
 
             while (true)
             {
-                if (Console.ReadKey().Key == ConsoleKey.D1)
+                if (Console.ReadKey(true).Key == ConsoleKey.D1)
                 {
-                    MUCOPacket packet = new MUCOPacket(8);
-                    packet.WriteInt(1234);
-
+                    MUCOPacket packet = new MUCOPacket((int)ServerPackets.HelloFromServer);
                     server.SendPacketToAll(packet, true);
                 }
             }
         }
 
+        private void HandleHelloFromClient(MUCOPacket packet)
+        {
+            Console.WriteLine("HelloFromClient");
+        }
+
         private static void Log(MUCOLogMessage message)
         {
             Console.WriteLine(message);
+        }
+    }
+
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            ServerProgram client = new ServerProgram();
         }
     }
 }

@@ -8,25 +8,24 @@ using System.Globalization;
 namespace Phenomenal.MUCONet
 {
     #region Logging
-
-    /// <summary>
-    /// MUCOLogLevel in an enum containing all supported log verbosity levels.
-    /// </summary>
-    public enum MUCOLogLevel
-	{
-		Trace = 0,
-		Debug = 1,
-		Info = 2,
-		Warn = 3,
-		Error = 4,
-		Fatal = 5
-	}
-
 	/// <summary>
 	/// MUCOLogMessage is a struct containing convenient data about a log message.
 	/// </summary>
 	public struct MUCOLogMessage
 	{
+		/// <summary>
+    	/// Enum containing all supported log verbosity levels.
+    	/// </summary>
+    	public enum MUCOLogLevel
+		{
+			Trace = 0,
+			Debug = 1,
+			Info = 2,
+			Warn = 3,
+			Error = 4,
+			Fatal = 5
+		}
+		
 		public DateTime TimeStamp;
 		public MUCOLogLevel LogLevel;
 		public string Message;
@@ -58,7 +57,7 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Trace(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Trace, message));
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Trace, message));
 		}
 
 		/// <summary>
@@ -67,7 +66,7 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Debug(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Debug, message));
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Debug, message));
 		}
 
 		/// <summary>
@@ -76,7 +75,7 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Info(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Info, message));
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Info, message));
 		}
 
 		/// <summary>
@@ -85,7 +84,7 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Warn(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Warn, message));
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Warn, message));
 		}
 
 		/// <summary>
@@ -94,7 +93,7 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Error(string message)
         {
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Error, message));
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Error, message));
 		}
 
 		/// <summary>
@@ -103,13 +102,31 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Fatal(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogLevel.Fatal, message));
+			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Fatal, message));
 		}
 	}
 
     #endregion
 
     #region Packets
+	/// <summary>
+	/// Enum containing all internal packets identifiers used to specifiy server packages.
+	/// The value range of internal packets identifiers range from 32768 to 65536.
+	/// </summary>
+	public enum MUCOInternalServerPacketIdentifiers : int
+	{
+		Welcome = 32768,
+    }
+
+	/// <summary>
+	/// Enum containing all internal packets identifiers used to specifiy client packages.
+	/// The value range of internal packets identifiers range from 32768 to 65536.
+	/// </summary>
+	public enum MUCOInternalClientPacketIdentifiers : int
+	{
+		WelcomeRecived = 32768,
+	}
+
     public class MUCOPacket : IDisposable
     {
         private List<byte> m_Data;
@@ -327,16 +344,6 @@ namespace Phenomenal.MUCONet
     }
 	#endregion
 
-	public enum MUCOInternalServerPacketIdentifiers
-	{
-		Welcome = -1,
-    }
-
-	public enum MUCOInternalClientPacketIdentifiers
-	{
-		WelcomeRecived = -1,
-	}
-
 	/// <summary>
 	/// MUCOConstants holds shared configuration variables that won't change at runtime.
 	/// </summary>
@@ -370,16 +377,39 @@ namespace Phenomenal.MUCONet
 		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 
 		public delegate void PacketHandler(MUCOPacket packet);
-		public Dictionary<MUCOInternalClientPacketIdentifiers, PacketHandler> PacketHandlers = new Dictionary<MUCOInternalClientPacketIdentifiers, PacketHandler>();
+
+		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private MUCOPacket m_ReceiveData = new MUCOPacket();
 		private Socket m_LocalSocket = null;
 		private int m_PlayerIDCounter = 0;
 
+		/// <summary>
+		/// Constructs an instance of MUCOServer.
+		/// </summary>
 		public MUCOServer()
         {
-			PacketHandlers.Add(MUCOInternalClientPacketIdentifiers.WelcomeRecived, HandleWelcomeReceived);
+			// Register internal packet handlers
+			RegisterPacketHandler((int)MUCOInternalClientPacketIdentifiers.WelcomeRecived, HandleWelcomeReceived);
+		}
+
+		/// <summary>
+		/// Registers a packet handler to specifed packet identifier.
+		/// </summary>
+		/// <param name="packetIdentifier">The packet identifier to assign the packet handler.</param>
+		/// <param name="packetHandler">The packet handler delegate.</param>
+		public void RegisterPacketHandler(int packetIdentifier, PacketHandler packetHandler)
+		{
+			if (m_PacketHandlers.ContainsKey(packetIdentifier))
+			{
+				MUCOLogger.Error($"Failed to register packet handler to packet identifier: {packetIdentifier}. The specified packet identifier has already been assigned a packet handler.");
+				return;
+			}
+
+			MUCOLogger.Info($"Successfully assigned a packet handler to packet identifier: {packetIdentifier}");
+
+			m_PacketHandlers.Add(packetIdentifier, packetHandler);
 		}
 
 		private void HandleWelcomeReceived(MUCOPacket packet)
@@ -487,6 +517,10 @@ namespace Phenomenal.MUCONet
 			}
 		}
 
+		/// <summary>
+		/// Makes sure that the specified packet gets passed on the correct PacketHandler.
+		/// </summary>
+		/// <param name="packet">The packet to handle</param>
 		private void HandlePacket(MUCOPacket packet)
 		{
 			int size = packet.ReadInt();
@@ -494,9 +528,9 @@ namespace Phenomenal.MUCONet
 
 			MUCOLogger.Trace($"Handleing packet new packet. Packet size: {size}, packet id: {packetID}.");
 
-			if (PacketHandlers.ContainsKey((MUCOInternalClientPacketIdentifiers)packetID))
+			if (m_PacketHandlers.ContainsKey(packetID))
             {
-				PacketHandlers[(MUCOInternalClientPacketIdentifiers)packetID](packet);
+				m_PacketHandlers[packetID](packet);
 			}
 			else
             {
@@ -529,6 +563,11 @@ namespace Phenomenal.MUCONet
 			throw new NotImplementedException();
 		}
 
+		/// <summary>
+		/// Sends a packet to all connected clients.
+		/// </summary>
+		/// <param name="packet">The packet to send.</param>
+		/// <param name="reliable">Reliable packets are sent using TCP, non-reliable packets use UDP.</param>
 		public void SendPacketToAll(MUCOPacket packet, bool reliable = true)
         {
 			if (reliable)
@@ -544,6 +583,12 @@ namespace Phenomenal.MUCONet
             }
         }
 
+		/// <summary>
+		/// Sends a packet to a specific client.
+		/// </summary>
+		/// <param name="receiver">The client to send the packet to.</param>
+		/// <param name="packet">The packet to send.</param>
+		/// <param name="reliable">Reliable packets are sent using TCP, non-reliable packets use UDP.</param>
 		private void SendPacket(MUCOClientInfo receiver, MUCOPacket packet, bool reliable = true)
         {
 			if (reliable)
@@ -567,19 +612,42 @@ namespace Phenomenal.MUCONet
 		public MUCOServerInfo ServerInfo { get; private set; }
 
 		public delegate void PacketHandler(MUCOPacket packet);
-		public Dictionary<MUCOInternalServerPacketIdentifiers, PacketHandler> PacketHandlers = new Dictionary<MUCOInternalServerPacketIdentifiers, PacketHandler>();
+
+		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private Socket m_LocalSocket;
 		private MUCOPacket m_ReceiveData = new MUCOPacket();
 
+		/// <summary>
+		/// Constructs an instance of MUCOClient.
+		/// </summary>
 		public MUCOClient()
         {
-			PacketHandlers.Add(MUCOInternalServerPacketIdentifiers.Welcome, HandleWelcome);
+			// Register internal packet handlers
+			RegisterPacketHandler((int)MUCOInternalServerPacketIdentifiers.Welcome, HandleWelcome);
 		}
 
-		private void HandleWelcome(MUCOPacket packet)
+		/// <summary>
+		/// Registers a packet handler to specifed packet identifier.
+		/// </summary>
+		/// <param name="packetIdentifier">The packet identifier to assign the packet handler.</param>
+		/// <param name="packetHandler">The packet handler delegate.</param>
+		public void RegisterPacketHandler(int packetIdentifier, PacketHandler packetHandler)
         {
+			if (m_PacketHandlers.ContainsKey(packetIdentifier))
+            {
+				MUCOLogger.Error($"Failed to register packet handler to packet identifier: {packetIdentifier}. The specified packet identifier has already been assigned a packet handler.");
+				return;
+            }
+
+			MUCOLogger.Info($"Successfully assigned a packet handler to packet identifier: {packetIdentifier}");
+
+			m_PacketHandlers.Add(packetIdentifier, packetHandler);
+        }
+
+		private void HandleWelcome(MUCOPacket packet)
+		{
 			int assignedClientID = packet.ReadInt();
 			MUCOLogger.Info($"Welcome, {assignedClientID}");
 
@@ -680,6 +748,10 @@ namespace Phenomenal.MUCONet
 			}
 		}
 
+		/// <summary>
+		/// Makes sure that the specified packet gets passed on the correct PacketHandler.
+		/// </summary>
+		/// <param name="packet">The packet to handle</param>
 		private void HandlePacket(MUCOPacket packet)
 		{
 			int size = packet.ReadInt();
@@ -687,9 +759,9 @@ namespace Phenomenal.MUCONet
 
 			MUCOLogger.Trace($"Handleing packet new packet. Packet size: {size}, packet id: {packetID}.");
 
-			if (PacketHandlers.ContainsKey((MUCOInternalServerPacketIdentifiers)packetID))
+			if (m_PacketHandlers.ContainsKey(packetID))
 			{
-				PacketHandlers[(MUCOInternalServerPacketIdentifiers)packetID](packet);
+				m_PacketHandlers[packetID](packet);
 			}
 			else
 			{
@@ -697,6 +769,11 @@ namespace Phenomenal.MUCONet
 			}
 		}
 
+		/// <summary>
+		/// Sends a packet to the server.
+		/// </summary>
+		/// <param name="packet">The packet to send.</param>
+		/// <param name="reliable">Reliable packets are sent using TCP, non-reliable packets use UDP.</param>
 		public void SendPacket(MUCOPacket packet, bool reliable = true)
 		{
 
