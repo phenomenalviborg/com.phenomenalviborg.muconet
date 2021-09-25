@@ -9,7 +9,7 @@ namespace Phenomenal.MUCONet
 {
     #region Logging
 	/// <summary>
-	/// MUCOLogMessage is a struct containing convenient data about a log message.
+	/// Struct containing convenient data about a log message.
 	/// </summary>
 	public struct MUCOLogMessage
 	{
@@ -44,7 +44,7 @@ namespace Phenomenal.MUCONet
 	}
 
 	/// <summary>
-	/// MUCOLogger is the only logger used in the MUCONet libary, client applications can hook custom handlers with the MUCOLogger.LogEvent.
+	/// The only logger used in the MUCONet libary, client applications can hook custom handlers with the MUCOLogger.LogEvent.
 	/// </summary>
 	public static class MUCOLogger
     {
@@ -345,7 +345,7 @@ namespace Phenomenal.MUCONet
 	#endregion
 
 	/// <summary>
-	/// MUCOConstants holds shared configuration variables that won't change at runtime.
+	/// Holds shared configuration variables that won't change at runtime.
 	/// </summary>
 	public static class MUCOConstants
 	{
@@ -354,14 +354,14 @@ namespace Phenomenal.MUCONet
 	}
 
 	/// <summary>
-	/// MUCOServerInfo is used for storeing information about a remote client.
+	/// Used for storeing information about a remote client.
 	/// </summary>
 	public struct MUCOServerInfo
 	{
 	}
 
 	/// <summary>
-	/// MUCOClientInfo is used for storeing information about a remote client.
+	/// Used for storeing information about a remote client.
 	/// </summary>
 	public struct MUCOClientInfo
 	{
@@ -370,7 +370,7 @@ namespace Phenomenal.MUCONet
 	}
 
 	/// <summary>
-	/// MUCOServer handles all "low-level" socket communication with the clients.
+	/// Handles all "low-level" socket communication with the clients.
 	/// </summary>
 	public class MUCOServer
 	{
@@ -605,7 +605,7 @@ namespace Phenomenal.MUCONet
 	}
 
 	/// <summary>
-	/// MUCOClient handles all "low-level" socket communication with the server.
+	/// Handles all "low-level" socket communication with the server.
 	/// </summary>
 	public class MUCOClient
 	{
