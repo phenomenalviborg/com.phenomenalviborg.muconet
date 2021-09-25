@@ -10,21 +10,75 @@ namespace Phenomenal.MUCONet
 	/// </summary>
 	public class MUCOClient
 	{
-		public delegate void PacketHandler(MUCOPacket packet);
-
 		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private Socket m_LocalSocket;
-		private MUCOPacket m_ReceiveData = new MUCOPacket();
 
 		/// <summary>
 		/// Constructs an instance of MUCOClient.
 		/// </summary>
 		public MUCOClient()
 		{
-			// Register internal packet handlers
 			RegisterPacketHandler((int)MUCOInternalServerPacketIdentifiers.Welcome, HandleWelcome);
+		}
+
+		/// <summary>
+		/// Starts the connection process.
+		/// </summary>
+		/// <param name="address">The IP address to connect to.</param>
+		/// <param name="port">The port to connect to.</param>
+		public void Connect(string address, int port)
+		{
+			try
+			{
+				// The AddressFamily enum specifies the addressing scheme that an instance of the Socket class can use. AddressFamily.InterNetwork represents address for IP version 4 (IPv4).
+				// The SocketType enum specifies the type of socket that an instance of the Socket class represents. SocketType.Steam is a reliable, two-way, connection-based byte stream.
+				// The ProtocolType enum specifies the protocols that the Socket class supports. ProtocolType.TCP represents Transmission Control Protocol(TCP)
+				m_LocalSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+				// Configure endpoint
+				// TODO: the ip and port should not be const.
+				IPAddress ipAddress = IPAddress.Parse(address);
+				IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
+
+				MUCOLogger.Info($"Connecting to server {ipEndPoint}");
+
+				// Begins an asynchronous request for a remote host connection.
+				m_LocalSocket.BeginConnect(ipEndPoint, new AsyncCallback(ConnectCallback), null);
+			}
+			catch (Exception exception)
+			{
+				MUCOLogger.Error($"Failed to create and/or configure the Socket: {exception.Message}");
+			}
+		}
+
+		/// <summary>
+		/// Disconnects from the active connection and resets all runtime data.
+		/// </summary>
+		public void Disconnect()
+        {
+			MUCOLogger.Info("Disconnecting...");
+			throw new NotImplementedException();
+        }
+
+		/// <summary>
+		/// Sends a packet to the server.
+		/// </summary>
+		/// <param name="packet">The packet to send.</param>
+		/// <param name="reliable">Reliable packets are sent using TCP, non-reliable packets use UDP.</param>
+		public void SendPacket(MUCOPacket packet, bool reliable = true)
+		{
+			if (reliable)
+			{
+				MUCOLogger.Trace($"Sending a packet to the server.");
+				packet.WriteLength();
+				m_LocalSocket.BeginSend(packet.ToArray(), 0, packet.GetSize(), SocketFlags.None, new AsyncCallback(SendCallback), null);
+			}
+			else
+			{
+				throw new NotImplementedException();
+			}
 		}
 
 		/// <summary>
@@ -45,46 +99,8 @@ namespace Phenomenal.MUCONet
 			m_PacketHandlers.Add(packetIdentifier, packetHandler);
 		}
 
-		private void HandleWelcome(MUCOPacket packet)
-		{
-			int assignedClientID = packet.ReadInt();
-			MUCOLogger.Info($"Welcome, {assignedClientID}");
-
-			MUCOPacket welcomeRecivedPacket = new MUCOPacket((int)MUCOInternalClientPacketIdentifiers.WelcomeRecived);
-			welcomeRecivedPacket.WriteInt(assignedClientID);
-			SendPacket(welcomeRecivedPacket);
-		}
-
 		/// <summary>
-		/// MUCOClient::Start is responsible for starting the server.
-		/// </summary>
-		public void Connect()
-		{
-			try
-			{
-				// The AddressFamily enum specifies the addressing scheme that an instance of the Socket class can use. AddressFamily.InterNetwork represents address for IP version 4 (IPv4).
-				// The SocketType enum specifies the type of socket that an instance of the Socket class represents. SocketType.Steam is a reliable, two-way, connection-based byte stream.
-				// The ProtocolType enum specifies the protocols that the Socket class supports. ProtocolType.TCP represents Transmission Control Protocol(TCP)
-				m_LocalSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
-				// Configure endpoint
-				// TODO: the ip and port should not be const.
-				IPAddress ipAddress = IPAddress.Parse("127.0.0.1");
-				IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, 1000);
-
-				MUCOLogger.Info($"Connecting to server {ipEndPoint}");
-
-				// Begins an asynchronous request for a remote host connection.
-				m_LocalSocket.BeginConnect(ipEndPoint, new AsyncCallback(ConnectCallback), null);
-			}
-			catch (Exception exception)
-			{
-				MUCOLogger.Error($"Failed to create and/or configure the Socket: {exception.Message}");
-			}
-		}
-
-		/// <summary>
-		/// MUCOClient::ConnectCallback is an asynchronous callback used for handling an incoming connection from the remote host.
+		/// An asynchronous callback used for handling an incoming connection from the remote host.
 		/// </summary>
 		private void ConnectCallback(IAsyncResult asyncResult)
 		{
@@ -103,7 +119,7 @@ namespace Phenomenal.MUCONet
 		}
 
 		/// <summary>
-		/// MUCOClient::SendCallback is an asynchronous callback used when sending data.
+		/// An asynchronous callback used when sending data.
 		/// </summary>
 		private void SendCallback(IAsyncResult asyncResult)
 		{
@@ -118,7 +134,7 @@ namespace Phenomenal.MUCONet
 		}
 
 		/// <summary>
-		/// MUCOClient::RecieveCallback is an asynchronous callback used for handling incoming data.
+		/// An asynchronous callback used for handling incoming data.
 		/// </summary>
 		private void RecieveCallback(IAsyncResult asyncResult)
 		{
@@ -126,19 +142,26 @@ namespace Phenomenal.MUCONet
 			{
 				int bytesReceived = m_LocalSocket.EndReceive(asyncResult);
 
-				MUCOLogger.Trace($"Received {bytesReceived} bytes from the server.");
+				MUCOLogger.Trace($"Receiving package from server.");
 
 				byte[] dataReceived = new byte[bytesReceived];
 				Array.Copy(m_ReceiveBuffer, dataReceived, bytesReceived);
 
-
 				// FIXME: Should i take care of stiching packet segment or does the standard do this for me?
 				// From my tests it seems like the only reason a packet would be split is the receive buffer size?..
-				m_ReceiveData = new MUCOPacket(dataReceived);
-				MUCOLogger.Trace($"Received {bytesReceived} out of {m_ReceiveData.ReadInt()} bytes.");
-				m_ReceiveData.SetReadOffset(0);
-				HandlePacket(m_ReceiveData);
+				// Reserch Nagle's algorithm, that might be causeing package splitting without the package size exceeding the receive buffer size.
+				MUCOPacket packet = new MUCOPacket(dataReceived);
+				int packetSize = packet.ReadInt();
+				if (packetSize >= MUCOConstants.RECEIVE_BUFFER_SIZE)
+				{
+					// If this ever triggers, the package size should be increased or package stitching should be implemented.
+					MUCOLogger.Error($"The package size was greater than the receive buffer size!");
+					return;
+				}
+				packet.SetReadOffset(0);
+				HandlePacket(packet);
 
+				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
 				m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
 			}
 			catch (Exception exception)
@@ -156,36 +179,26 @@ namespace Phenomenal.MUCONet
 			int size = packet.ReadInt();
 			int packetID = packet.ReadInt();
 
-			MUCOLogger.Trace($"Handleing packet new packet. Packet size: {size}, packet id: {packetID}.");
-
 			if (m_PacketHandlers.ContainsKey(packetID))
 			{
 				m_PacketHandlers[packetID](packet);
 			}
 			else
 			{
-				MUCOLogger.Warn($"Failed to find package handler for packet with identifier: {packetID}");
+				MUCOLogger.Error($"Failed to find package handler for packet with identifier: {packetID}");
 			}
 		}
 
-		/// <summary>
-		/// Sends a packet to the server.
-		/// </summary>
-		/// <param name="packet">The packet to send.</param>
-		/// <param name="reliable">Reliable packets are sent using TCP, non-reliable packets use UDP.</param>
-		public void SendPacket(MUCOPacket packet, bool reliable = true)
+        #region Internal package handlers
+        private void HandleWelcome(MUCOPacket packet)
 		{
+			int assignedClientID = packet.ReadInt();
+			MUCOLogger.Info($"Welcome, {assignedClientID}");
 
-			if (reliable)
-			{
-				MUCOLogger.Trace($"Sending a packet to the server.");
-				packet.WriteLength();
-				m_LocalSocket.BeginSend(packet.ToArray(), 0, packet.GetSize(), SocketFlags.None, new AsyncCallback(SendCallback), null);
-			}
-			else
-			{
-				throw new NotImplementedException();
-			}
+			MUCOPacket welcomeRecivedPacket = new MUCOPacket((int)MUCOInternalClientPacketIdentifiers.WelcomeRecived);
+			welcomeRecivedPacket.WriteInt(assignedClientID);
+			SendPacket(welcomeRecivedPacket);
 		}
+		#endregion
 	}
 }

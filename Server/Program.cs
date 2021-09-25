@@ -23,7 +23,7 @@ namespace Server
 
             MUCOServer server = new MUCOServer();
             server.RegisterPacketHandler((int)ClientPackets.HelloFromClient, HandleHelloFromClient);
-            server.Start();
+            server.Start(1000);
 
             while (true)
             {
