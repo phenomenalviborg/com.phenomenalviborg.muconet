@@ -23,6 +23,8 @@ namespace Client
             client.RegisterPacketHandler((int)ServerPackets.HelloFromServer, HandleHelloFromServer);
             client.Connect("127.0.0.1", 1000);
 
+            client.OnConnectedEvent += OnConnected;
+
             while (true)
             {
                 if (Console.ReadKey(true).Key == ConsoleKey.D1)
@@ -42,6 +44,13 @@ namespace Client
         {
             Console.WriteLine(message);
         }
+
+        #region Events
+        private void OnConnected()
+        {
+            Console.WriteLine("OnConnected()");
+        }
+        #endregion
     }
 
     class Program

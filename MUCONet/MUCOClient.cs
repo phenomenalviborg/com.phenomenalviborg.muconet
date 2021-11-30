@@ -15,6 +15,10 @@ namespace Phenomenal.MUCONet
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private Socket m_LocalSocket;
 
+		// User events and delegates
+		public delegate void OnConnectedDelegate();
+		public event OnConnectedDelegate OnConnectedEvent;
+
 		/// <summary>
 		/// Constructs an instance of MUCOClient.
 		/// </summary>
@@ -194,6 +198,8 @@ namespace Phenomenal.MUCONet
 		{
 			int assignedClientID = packet.ReadInt();
 			MUCOLogger.Info($"Welcome, {assignedClientID}");
+
+			OnConnectedEvent?.Invoke();
 
 			MUCOPacket welcomeRecivedPacket = new MUCOPacket((int)MUCOInternalClientPacketIdentifiers.WelcomeRecived);
 			welcomeRecivedPacket.WriteInt(assignedClientID);

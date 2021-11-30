@@ -14,7 +14,6 @@ namespace Server
         HelloFromClient
     }
 
-
     class ServerProgram
     {
         public ServerProgram()
@@ -24,6 +23,8 @@ namespace Server
             MUCOServer server = new MUCOServer();
             server.RegisterPacketHandler((int)ClientPackets.HelloFromClient, HandleHelloFromClient);
             server.Start(1000);
+
+            server.OnClientConnectedEvent += OnClientConnected;
 
             while (true)
             {
@@ -39,6 +40,13 @@ namespace Server
         {
             Console.WriteLine("HelloFromClient");
         }
+
+        #region Events
+        private void OnClientConnected()
+        {
+            Console.WriteLine("OnClientConnected()");
+        }
+        #endregion
 
         private static void Log(MUCOLogMessage message)
         {

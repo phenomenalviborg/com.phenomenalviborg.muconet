@@ -32,6 +32,10 @@ namespace Phenomenal.MUCONet
 		private Socket m_LocalSocket = null;
 		private int m_PlayerIDCounter = 0;
 
+		// User events and delegates
+		public delegate void OnClientConnectedDelegate();
+		public event OnClientConnectedDelegate OnClientConnectedEvent;
+
 		/// <summary>
 		/// Constructs an instance of MUCOServer.
 		/// </summary>
@@ -255,6 +259,8 @@ namespace Phenomenal.MUCONet
 		private void HandleWelcomeReceived(MUCOPacket packet)
 		{
 			MUCOLogger.Info("Welcome Received");
+		
+			OnClientConnectedEvent?.Invoke();
 		}
 		#endregion
 	}
