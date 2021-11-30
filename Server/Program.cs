@@ -33,6 +33,14 @@ namespace Server
                     MUCOPacket packet = new MUCOPacket((int)ServerPackets.HelloFromServer);
                     server.SendPacketToAll(packet, true);
                 }
+                if (Console.ReadKey(true).Key == ConsoleKey.D2)
+                {
+                    Console.WriteLine("Client List:");
+                    foreach (MUCOServer.MUCOClientInfo clientInfo in server.ClientInfo.Values)
+                    {
+                        Console.WriteLine($"{clientInfo.RemoteSocket.RemoteEndPoint} - ID: {clientInfo.UniqueIdentifier}");
+                    }
+                }
             }
         }
 
