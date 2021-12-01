@@ -14,6 +14,7 @@ namespace Phenomenal.MUCONet
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private Socket m_LocalSocket;
+		private bool m_IsConnected = false;
 
 		// User events and delegates
 		public delegate void OnConnectedDelegate();
@@ -63,8 +64,18 @@ namespace Phenomenal.MUCONet
 		public void Disconnect()
         {
 			MUCOLogger.Info("Disconnecting...");
-			throw new NotImplementedException();
-        }
+			if (m_IsConnected)
+            {
+				m_IsConnected = false;
+				m_LocalSocket.Close();
+
+				MUCOLogger.Info("Disconnected from the server.");
+			}
+			else
+            {
+				MUCOLogger.Info("Failed to disconnect, there was no server to disconnect from.");
+			}
+		}
 
 		/// <summary>
 		/// Sends a packet to the server.
@@ -113,6 +124,7 @@ namespace Phenomenal.MUCONet
 				m_LocalSocket.EndConnect(asyncResult);
 
 				MUCOLogger.Info("Connection was successfully established with the server.");
+				m_IsConnected = true;
 
 				m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
 			}
@@ -167,6 +179,17 @@ namespace Phenomenal.MUCONet
 
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
 				m_LocalSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(RecieveCallback), null);
+			}
+			catch (SocketException exception)
+			{
+				if (exception.SocketErrorCode == System.Net.Sockets.SocketError.ConnectionReset)
+				{
+					Disconnect();
+				}
+				else
+				{
+					MUCOLogger.Error($"A socket exception occurred while receiving data: {exception.Message}");
+				}
 			}
 			catch (Exception exception)
 			{
