@@ -18,6 +18,11 @@ namespace Phenomenal.MUCONet
 			public int UniqueIdentifier;
 			public Socket RemoteSocket;
 
+			public void Disconnect()
+            {
+				RemoteSocket.Close();
+            }
+
 			public override string ToString()
             {
 				return $"client {UniqueIdentifier} ({RemoteSocket.RemoteEndPoint})";
@@ -203,9 +208,10 @@ namespace Phenomenal.MUCONet
 		/// </summary>
 		private void ReceiveCallback(IAsyncResult asyncResult)
 		{
+			MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState;
+		
 			try
 			{
-				MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState;
 				int bytesReceived = clientInfo.RemoteSocket.EndReceive(asyncResult);
 
 				MUCOLogger.Trace($"Receiving package from {clientInfo}.");
@@ -230,10 +236,36 @@ namespace Phenomenal.MUCONet
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
 				clientInfo.RemoteSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
 			}
+			catch (SocketException exception)
+            {
+				if (exception.SocketErrorCode == System.Net.Sockets.SocketError.ConnectionReset)
+                {
+					Disconnect(clientInfo);
+				}
+				else
+				{
+					MUCOLogger.Error($"A socket exception occurred trying to handle incoming data: {exception.Message}");
+				}
+			}
 			catch (Exception exception)
 			{
-				MUCOLogger.Error($"An error occurred trying to handle incoming data: {exception.Message}");
+				MUCOLogger.Error($"An exception occurred trying to handle incoming data: {exception.Message}");
 			}
+		}
+
+		private void Disconnect(MUCOClientInfo clientInfo)
+        {
+			MUCOLogger.Info($"Disconnecting {clientInfo}");
+
+			if (ClientInfo.ContainsKey(clientInfo.UniqueIdentifier))
+            {
+				clientInfo.Disconnect();
+				ClientInfo.Remove(clientInfo.UniqueIdentifier);
+            }
+			else
+            {
+				MUCOLogger.Error($"Failed to find player the to disconnect, UniqueIdentifier: {clientInfo.UniqueIdentifier}.");
+            }
 		}
 
 		/// <summary>
