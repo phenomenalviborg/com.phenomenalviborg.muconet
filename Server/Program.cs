@@ -25,6 +25,7 @@ namespace Server
             server.Start(1000);
 
             server.OnClientConnectedEvent += OnClientConnected;
+            server.OnClientDisconnectedEvent += OnClientDisconnected;
 
             while (true)
             {
@@ -53,6 +54,11 @@ namespace Server
         private void OnClientConnected()
         {
             Console.WriteLine("OnClientConnected()");
+        }
+
+        private void OnClientDisconnected()
+        {
+            Console.WriteLine("OnClientDisconnected()");
         }
         #endregion
 

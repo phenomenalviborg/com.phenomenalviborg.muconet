@@ -41,6 +41,9 @@ namespace Phenomenal.MUCONet
 		public delegate void OnClientConnectedDelegate();
 		public event OnClientConnectedDelegate OnClientConnectedEvent;
 
+		public delegate void OnClienttDisconnectedDelegate();
+		public event OnClienttDisconnectedDelegate OnClientDisconnectedEvent;
+
 		/// <summary>
 		/// Constructs an instance of MUCOServer.
 		/// </summary>
@@ -261,7 +264,8 @@ namespace Phenomenal.MUCONet
             {
 				clientInfo.Disconnect();
 				ClientInfo.Remove(clientInfo.UniqueIdentifier);
-            }
+				OnClientDisconnectedEvent?.Invoke();
+			}
 			else
             {
 				MUCOLogger.Error($"Failed to find player the to disconnect, UniqueIdentifier: {clientInfo.UniqueIdentifier}.");
