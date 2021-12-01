@@ -21,7 +21,7 @@ namespace Client
 
             MUCOClient client = new MUCOClient();
             client.RegisterPacketHandler((int)ServerPackets.HelloFromServer, HandleHelloFromServer);
-            client.Connect("127.0.0.1", 1000);
+            client.Connect("127.0.0.1", 1030);
 
             client.OnConnectedEvent += OnConnected;
 

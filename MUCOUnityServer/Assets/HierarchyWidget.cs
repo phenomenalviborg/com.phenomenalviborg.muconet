@@ -1,16 +1,23 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Phenomenal.MUCONet;
 
 public class HierarchyWidget : MonoBehaviour
 {
+    [Header("Server")]
+    [SerializeField] private MUCOUnityServer m_ServerManager;
+
+    [Header("Runtime Data")]
     [SerializeField] private GameObject m_HierarchyElementPrefab;
 
+    [Header("UI Elements")]
     [SerializeField] private GameObject m_HierarchyList;
 
     private void Start()
     {
-        Regenerate();
+        m_ServerManager.Server.OnClientConnectedEvent += Regenerate;
+        m_ServerManager.Server.OnClientDisconnectedEvent += Regenerate;
     }
 
     public void Regenerate()
@@ -21,7 +28,12 @@ public class HierarchyWidget : MonoBehaviour
             GameObject.Destroy(child.gameObject);
         }
 
-        Instantiate(m_HierarchyElementPrefab, m_HierarchyList.transform);
-        Instantiate(m_HierarchyElementPrefab, m_HierarchyList.transform);
+        // Add all current users
+        foreach (MUCOServer.MUCOClientInfo clientInfo in m_ServerManager.Server.ClientInfo.Values)
+        {
+            GameObject userWidgetGameObject = Instantiate(m_HierarchyElementPrefab, m_HierarchyList.transform);
+            HierarchyUserWidget userWidget = userWidgetGameObject.GetComponent<HierarchyUserWidget>();
+            userWidget.SetUsername($"USER_{clientInfo.UniqueIdentifier}");
+        }
     }
 }

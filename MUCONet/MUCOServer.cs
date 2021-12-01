@@ -76,7 +76,7 @@ namespace Phenomenal.MUCONet
 				// Socket::Listen places the Socket in a listening state. The backlog parameter specifies the maximum length of the pending connections queue.
 				m_LocalSocket.Listen(4);
 
-				MUCOLogger.Info($"Successfully started server on port {1000}.");
+				MUCOLogger.Info($"Successfully started server on port {port}.");
 
 				// Begin an asynchronous operation to accept an incoming connection attempt.
 				m_LocalSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
