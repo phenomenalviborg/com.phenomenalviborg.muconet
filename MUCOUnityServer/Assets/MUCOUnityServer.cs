@@ -5,6 +5,8 @@ using Phenomenal.MUCONet;
 
 public class MUCOUnityServer : MonoBehaviour
 {
+    [SerializeField] private int m_ServerPort = 1000;
+
     public MUCOServer Server { get; private set; } = null;
 
     enum ServerPackets : int
@@ -14,7 +16,8 @@ public class MUCOUnityServer : MonoBehaviour
 
     enum ClientPackets : int
     {
-        HelloFromClient
+        HelloFromClient,
+        UpdateTransform
     }
 
     private void OnApplicationQuit()
@@ -22,19 +25,25 @@ public class MUCOUnityServer : MonoBehaviour
         Server.Stop();
     }
 
-    private void Awake()
+    private void Start()
     {
         MUCOLogger.LogEvent += Log;
 
         Server = new MUCOServer();
         Server.RegisterPacketHandler((int)ClientPackets.HelloFromClient, HandleHelloFromClient);
-        Server.Start(1030);
-   
+        Server.RegisterPacketHandler((int)ClientPackets.UpdateTransform, HandleUpdateTransform);
+        Server.Start(m_ServerPort);
     }
 
     private void HandleHelloFromClient(MUCOPacket packet)
     {
         Debug.Log("HelloFromClient");
+    }
+
+    private void HandleUpdateTransform(MUCOPacket packet)
+    {
+        float newX = packet.ReadFloat();
+        Debug.Log($"[UpdateTransform] New X: {newX}");
     }
 
     private static void Log(MUCOLogMessage message)

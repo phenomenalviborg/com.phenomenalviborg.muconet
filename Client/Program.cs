@@ -10,7 +10,8 @@ namespace Client
 
     enum ClientPackets : int
     {
-        HelloFromClient
+        HelloFromClient,
+        UpdateTransform
     }
 
     class ClientProgram
@@ -21,7 +22,7 @@ namespace Client
 
             MUCOClient client = new MUCOClient();
             client.RegisterPacketHandler((int)ServerPackets.HelloFromServer, HandleHelloFromServer);
-            client.Connect("127.0.0.1", 1030);
+            client.Connect("127.0.0.1", 1000);
 
             client.OnConnectedEvent += OnConnected;
 
@@ -31,6 +32,13 @@ namespace Client
                 {
                     MUCOPacket packet = new MUCOPacket((int)ClientPackets.HelloFromClient);
                     client.SendPacket(packet, true);
+                }
+
+                if (Console.ReadKey(true).Key == ConsoleKey.D)
+                {
+                    MUCOPacket packet = new MUCOPacket((int)ClientPackets.UpdateTransform);
+                    packet.WriteFloat(10.0f);
+                    client.SendPacket(packet);
                 }
             }
         }
