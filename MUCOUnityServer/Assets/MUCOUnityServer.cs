@@ -20,11 +20,6 @@ public class MUCOUnityServer : MonoBehaviour
         UpdateTransform
     }
 
-    private void OnApplicationQuit()
-    {
-        Server.Stop();
-    }
-
     private void Start()
     {
         MUCOLogger.LogEvent += Log;
@@ -35,6 +30,11 @@ public class MUCOUnityServer : MonoBehaviour
         Server.Start(m_ServerPort);
     }
 
+    private void OnApplicationQuit()
+    {
+        Server.Stop();
+    }
+
     private void HandleHelloFromClient(MUCOPacket packet)
     {
         Debug.Log("HelloFromClient");
@@ -43,7 +43,8 @@ public class MUCOUnityServer : MonoBehaviour
     private void HandleUpdateTransform(MUCOPacket packet)
     {
         float newX = packet.ReadFloat();
-        Debug.Log($"[UpdateTransform] New X: {newX}");
+        float newY = packet.ReadFloat();
+        Debug.Log($"[UpdateTransform]: {newX}, {newY}");
     }
 
     private static void Log(MUCOLogMessage message)

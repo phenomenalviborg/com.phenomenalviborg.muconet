@@ -10,12 +10,12 @@ public class MUCOUnityClient : MonoBehaviour
 
     public MUCOClient Client { get; private set; } = null;
 
-    enum ServerPackets : int
+    public enum ServerPackets : int
     {
         HelloFromServer
     }
 
-    enum ClientPackets : int
+    public enum ClientPackets : int
     {
         HelloFromClient,
         UpdateTransform
@@ -44,10 +44,6 @@ public class MUCOUnityClient : MonoBehaviour
 
         }
 
-        Debug.Log("test");
-        MUCOPacket packet = new MUCOPacket((int)ClientPackets.UpdateTransform);
-        packet.WriteFloat(10.0f);
-        Client.SendPacket(packet);
     }
 
     private void HandleHelloFromServer(MUCOPacket packet)
