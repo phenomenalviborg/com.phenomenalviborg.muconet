@@ -13,3 +13,4 @@ public class HierarchyUserWidget : MonoBehaviour
         m_UsernameText.SetText(username);
     }
 }
+    

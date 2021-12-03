@@ -9,6 +9,9 @@ public class MUCOUnityServer : MonoBehaviour
 
     public MUCOServer Server { get; private set; } = null;
 
+    [SerializeField] private GameObject m_UserPrefab = null;
+    private Dictionary<int, GameObject> m_UserObjects = new Dictionary<int, GameObject>();
+
     enum ServerPackets : int
     {
         HelloFromServer
@@ -35,16 +38,28 @@ public class MUCOUnityServer : MonoBehaviour
         Server.Stop();
     }
 
-    private void HandleHelloFromClient(MUCOPacket packet)
+    private void HandleHelloFromClient(MUCOPacket packet, int fromClient)
     {
         Debug.Log("HelloFromClient");
     }
 
-    private void HandleUpdateTransform(MUCOPacket packet)
+    private void HandleUpdateTransform(MUCOPacket packet, int fromClient)
     {
-        float newX = packet.ReadFloat();
-        float newY = packet.ReadFloat();
-        Debug.Log($"[UpdateTransform]: {newX}, {newY}");
+        ThreadManager.ExecuteOnMainThread(() =>
+        {
+            Debug.Log($"[UpdateTransform]: {fromClient}");
+
+            if (m_UserObjects.ContainsKey(fromClient))
+            {
+                float newX = packet.ReadFloat();
+                float newY = packet.ReadFloat();
+                m_UserObjects[fromClient].transform.position = new Vector3(newX, newY, 0.0f);
+            }
+            else
+            {
+                m_UserObjects[fromClient] = Instantiate(m_UserPrefab);
+            }
+        });
     }
 
     private static void Log(MUCOLogMessage message)

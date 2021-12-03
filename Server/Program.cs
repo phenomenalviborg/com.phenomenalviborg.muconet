@@ -11,7 +11,8 @@ namespace Server
 
     enum ClientPackets : int
     {
-        HelloFromClient
+        HelloFromClient,
+        UpdateTransform
     }
 
     class ServerProgram
@@ -22,6 +23,7 @@ namespace Server
 
             MUCOServer server = new MUCOServer();
             server.RegisterPacketHandler((int)ClientPackets.HelloFromClient, HandleHelloFromClient);
+            server.RegisterPacketHandler((int)ClientPackets.UpdateTransform, HandleUpdateTransform);
             server.Start(1000);
 
             server.OnClientConnectedEvent += OnClientConnected;
@@ -48,6 +50,11 @@ namespace Server
         private void HandleHelloFromClient(MUCOPacket packet, int fromClient)
         {
             Console.WriteLine("HelloFromClient");
+        }
+
+        private void HandleUpdateTransform(MUCOPacket packet, int fromClient)
+        {
+            Console.WriteLine("UpdateTransform");
         }
 
         #region Events
