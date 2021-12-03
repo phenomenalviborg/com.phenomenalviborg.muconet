@@ -4,12 +4,6 @@ using System.Collections.Generic;
 namespace Phenomenal.MUCONet
 {
 	/// <summary>
-	/// Packet handler delegate.
-	/// </summary>
-	/// <param name="packet">The packet to handle.</param>
-	public delegate void PacketHandler(MUCOPacket packet);
-
-	/// <summary>
 	/// Enum containing all internal packets identifiers used to specifiy server packages.
 	/// The value range of internal packets identifiers range from 32768 to 65536.
 	/// </summary>

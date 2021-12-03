@@ -30,6 +30,8 @@ namespace Phenomenal.MUCONet
 
 		}
 
+		public delegate void PacketHandler(MUCOPacket packet, int fromClient);
+
 		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
@@ -234,7 +236,7 @@ namespace Phenomenal.MUCONet
 					return;
 				}
 				packet.SetReadOffset(0);
-				HandlePacket(packet);
+				HandlePacket(packet, clientInfo.UniqueIdentifier);
 
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
 				clientInfo.RemoteSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
@@ -276,14 +278,14 @@ namespace Phenomenal.MUCONet
 		/// Makes sure that the specified packet gets passed on the correct PacketHandler.
 		/// </summary>
 		/// <param name="packet">The packet to handle</param>
-		private void HandlePacket(MUCOPacket packet)
+		private void HandlePacket(MUCOPacket packet, int fromClient)
 		{
 			int size = packet.ReadInt();
 			int packetID = packet.ReadInt();
 
 			if (m_PacketHandlers.ContainsKey(packetID))
 			{
-				m_PacketHandlers[packetID](packet);
+				m_PacketHandlers[packetID](packet, fromClient);
 			}
 			else
 			{
@@ -292,7 +294,7 @@ namespace Phenomenal.MUCONet
 		}
 
 		#region Internal package handlers
-		private void HandleWelcomeReceived(MUCOPacket packet)
+		private void HandleWelcomeReceived(MUCOPacket packet, int fromClient)
 		{
 			MUCOLogger.Info("Welcome Received");
 		

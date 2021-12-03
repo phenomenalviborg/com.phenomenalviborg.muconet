@@ -10,6 +10,8 @@ namespace Phenomenal.MUCONet
 	/// </summary>
 	public class MUCOClient
 	{
+		public delegate void PacketHandler(MUCOPacket packet);
+
 		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
 		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];

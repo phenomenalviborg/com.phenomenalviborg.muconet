@@ -45,7 +45,7 @@ namespace Server
             }
         }
 
-        private void HandleHelloFromClient(MUCOPacket packet)
+        private void HandleHelloFromClient(MUCOPacket packet, int fromClient)
         {
             Console.WriteLine("HelloFromClient");
         }
