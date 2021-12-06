@@ -239,7 +239,7 @@ MonoBehaviour:
   m_ClientNetworkManager: {fileID: 1603309217}
   m_MinimumReplicationTransformDelta: 0.05
   m_EnableWandering: 1
-  m_WaderingBoundsSize: {x: 100, y: 100, z: 10}
+  m_WaderingBoundsSize: {x: 16, y: 9, z: 10}
   m_WaderingTargetLocation: {x: 0, y: 0, z: 0}
 --- !u!4 &842725934
 Transform:
@@ -286,7 +286,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_SeverAddress: 127.0.0.1
-  m_ServerPort: 1000
+  m_ServerPort: 1001
 --- !u!4 &1603309218
 Transform:
   m_ObjectHideFlags: 0
