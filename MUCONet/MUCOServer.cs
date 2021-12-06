@@ -17,6 +17,14 @@ namespace Phenomenal.MUCONet
 		{
 			public int UniqueIdentifier;
 			public Socket RemoteSocket;
+			public byte[] ReceiveBuffer;
+
+			public MUCOClientInfo(int uniqueIdentifier, Socket remoteSocket)
+			{
+				UniqueIdentifier = uniqueIdentifier;
+				RemoteSocket = remoteSocket;
+				ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
+			}
 
 			public void Disconnect()
             {
@@ -35,7 +43,6 @@ namespace Phenomenal.MUCONet
 		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
-		private byte[] m_ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
 		private Socket m_LocalSocket = null;
 		private int m_PlayerIDCounter = 0;
 
@@ -173,10 +180,9 @@ namespace Phenomenal.MUCONet
 
 				m_PlayerIDCounter++;
 
-				MUCOClientInfo clientInfo = new MUCOClientInfo();
-				clientInfo.UniqueIdentifier = m_PlayerIDCounter;
-				clientInfo.RemoteSocket = clientSocket;
-				ClientInfo.Add(clientInfo.UniqueIdentifier, clientInfo);
+				// Create and add the client info struct to the ClientInfo dictionary.
+				MUCOClientInfo clientInfo = new MUCOClientInfo(m_PlayerIDCounter, clientSocket);
+				ClientInfo.Add(m_PlayerIDCounter, clientInfo);
 
 				// Send welcome packet
 				MUCOPacket welcomePacket = new MUCOPacket((int)MUCOInternalServerPacketIdentifiers.Welcome);
@@ -184,7 +190,7 @@ namespace Phenomenal.MUCONet
 				SendPacket(clientInfo, welcomePacket);
 
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
-				clientSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
+				clientSocket.BeginReceive(clientInfo.ReceiveBuffer, 0, clientInfo.ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
 			}
 			catch (Exception exception)
 			{
@@ -218,17 +224,17 @@ namespace Phenomenal.MUCONet
 			try
 			{
 				int bytesReceived = clientInfo.RemoteSocket.EndReceive(asyncResult);
-
-				MUCOLogger.Trace($"Receiving package from {clientInfo}.");
-
 				if (bytesReceived <= 0)
                 {
 					Disconnect(clientInfo);
 					return;
 				}
+				
+				MUCOLogger.Trace($"Receiving package from {clientInfo}.");
 
 				byte[] dataReceived = new byte[bytesReceived];
-				Array.Copy(m_ReceiveBuffer, dataReceived, bytesReceived);
+				Array.Copy(clientInfo.ReceiveBuffer, dataReceived, bytesReceived);
+				Array.Clear(clientInfo.ReceiveBuffer, 0, clientInfo.ReceiveBuffer.Length);
 
 				// FIXME: Should i take care of stiching packet segment or does the standard do this for me?
 				// From my tests it seems like the only reason a packet would be split is the receive buffer size?..
@@ -241,11 +247,24 @@ namespace Phenomenal.MUCONet
 					MUCOLogger.Error($"The package size was greater than the receive buffer size!");
 					return;
 				}
+
+                {
+					int packetID = packet.ReadInt();
+
+					if(packetID == 1)
+                    {
+						float newX = packet.ReadFloat();
+						float newY = packet.ReadFloat();
+						MUCOLogger.Info($"client: {clientInfo}, clientID: {clientInfo.UniqueIdentifier}, x: {newX}, y: {newY}");
+					}
+				}
+
 				packet.SetReadOffset(0);
+				
 				HandlePacket(packet, clientInfo.UniqueIdentifier);
 
 				// Begin an asynchronously operation to receive incoming data from clientSocket. Incoming data will be stored in m_ReceiveBuffer 
-				clientInfo.RemoteSocket.BeginReceive(m_ReceiveBuffer, 0, m_ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
+				clientInfo.RemoteSocket.BeginReceive(clientInfo.ReceiveBuffer, 0, clientInfo.ReceiveBuffer.Length, SocketFlags.None, new AsyncCallback(ReceiveCallback), clientInfo);
 			}
 			catch (SocketException exception)
             {

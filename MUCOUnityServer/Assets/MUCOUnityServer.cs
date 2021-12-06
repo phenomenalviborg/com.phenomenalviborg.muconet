@@ -47,17 +47,20 @@ public class MUCOUnityServer : MonoBehaviour
     {
         ThreadManager.ExecuteOnMainThread(() =>
         {
-            Debug.Log($"[UpdateTransform]: {fromClient}");
 
             if (m_UserObjects.ContainsKey(fromClient))
             {
                 float newX = packet.ReadFloat();
                 float newY = packet.ReadFloat();
                 m_UserObjects[fromClient].transform.position = new Vector3(newX, newY, 0.0f);
+                
+                Debug.Log($"[UpdateTransform] Updated trasnform for client: {fromClient}, newX: {newX}, newY: {newY})");
             }
             else
             {
                 m_UserObjects[fromClient] = Instantiate(m_UserPrefab);
+
+                Debug.Log($"[UpdateTransform] Created player object for client´:{fromClient}");
             }
         });
     }
