@@ -221,6 +221,12 @@ namespace Phenomenal.MUCONet
 
 				MUCOLogger.Trace($"Receiving package from {clientInfo}.");
 
+				if (bytesReceived <= 0)
+                {
+					Disconnect(clientInfo);
+					return;
+				}
+
 				byte[] dataReceived = new byte[bytesReceived];
 				Array.Copy(m_ReceiveBuffer, dataReceived, bytesReceived);
 
