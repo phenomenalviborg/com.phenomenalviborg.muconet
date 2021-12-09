@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 
-namespace Phenomenal.MUCONet
+namespace PhenomenalViborg.MUCONet
 {
 	/// <summary>
 	/// Struct containing convenient data about a log message.
@@ -34,7 +34,7 @@ namespace Phenomenal.MUCONet
 
 		public override string ToString()
 		{
-			return $"[{TimeStamp.ToString("HH:mm:ss.fff", new CultureInfo("es-ES", false))}] [{LogLevel}] MUCONet: {Message}";
+			return $"[{TimeStamp.ToString(@"HH:mm:ss.fff")}] [{LogLevel}] MUCONet: {Message}";
 		}
 	}
 
@@ -46,13 +46,18 @@ namespace Phenomenal.MUCONet
 		public delegate void LogDelegate(MUCOLogMessage message);
 		public static event LogDelegate LogEvent;
 
+		public static MUCOLogMessage.MUCOLogLevel LogLevel = MUCOLogMessage.MUCOLogLevel.Trace;
+
 		/// <summary>
 		/// A log level describing events showing step by step execution of your code that can be ignored during the standard operation, but may be useful during extended debugging sessions.
 		/// </summary>
 		/// <param name="message">The message to log.</param>
 		public static void Trace(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Trace, message));
+			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Trace)
+			{
+				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Trace, message));
+			}
 		}
 
 		/// <summary>
@@ -61,7 +66,10 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Debug(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Debug, message));
+			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Debug)
+			{
+				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Debug, message));
+			}
 		}
 
 		/// <summary>
@@ -70,7 +78,10 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Info(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Info, message));
+			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Info)
+			{
+				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Info, message));
+			}
 		}
 
 		/// <summary>
@@ -79,7 +90,10 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Warn(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Warn, message));
+			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Warn)
+			{
+				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Warn, message));
+			}
 		}
 
 		/// <summary>
@@ -88,7 +102,10 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Error(string message)
         {
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Error, message));
+			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Error)
+			{
+				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Error, message));
+			}
 		}
 
 		/// <summary>
@@ -97,7 +114,10 @@ namespace Phenomenal.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Fatal(string message)
 		{
-			LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Fatal, message));
+			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Fatal)
+			{
+				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Fatal, message));
+			}
 		}
 	}
 }

@@ -1,5 +1,5 @@
 ﻿using System;
-using Phenomenal.MUCONet;
+using PhenomenalViborg.MUCONet;
 
 namespace Client
 {

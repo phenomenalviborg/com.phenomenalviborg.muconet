@@ -16,8 +16,8 @@ public class HierarchyWidget : MonoBehaviour
 
     private void Start()
     {
-        m_ServerManager.Server.OnClientConnectedEvent += Regenerate;
-        m_ServerManager.Server.OnClientDisconnectedEvent += Regenerate;
+        //m_ServerManager.Server.OnClientConnectedEvent += Regenerate;
+        //m_ServerManager.Server.OnClientDisconnectedEvent += Regenerate;
     }
 
     public void Regenerate()

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using Phenomenal.MUCONet;
+using PhenomenalViborg.MUCONet;
 
 namespace Server
 {

@@ -12,6 +12,9 @@ public class MUCOUnityServer : MonoBehaviour
     [SerializeField] private GameObject m_UserPrefab = null;
     private Dictionary<int, GameObject> m_UserObjects = new Dictionary<int, GameObject>();
 
+    [Header("Debug")]
+    [SerializeField] private MUCOLogMessage.MUCOLogLevel m_LogLevel = MUCOLogMessage.MUCOLogLevel.Info;
+
     enum ServerPackets : int
     {
         HelloFromServer
@@ -26,6 +29,7 @@ public class MUCOUnityServer : MonoBehaviour
     private void Start()
     {
         MUCOLogger.LogEvent += Log;
+        MUCOLogger.LogLevel = m_LogLevel;
 
         Server = new MUCOServer();
         Server.RegisterPacketHandler((int)ClientPackets.HelloFromClient, HandleHelloFromClient);
@@ -53,20 +57,16 @@ public class MUCOUnityServer : MonoBehaviour
                 float newX = packet.ReadFloat();
                 float newY = packet.ReadFloat();
                 m_UserObjects[fromClient].transform.position = new Vector3(newX, newY, 0.0f);
-                
-                Debug.Log($"[UpdateTransform] Updated trasnform for client: {fromClient}, newX: {newX}, newY: {newY})");
             }
             else
             {
                 m_UserObjects[fromClient] = Instantiate(m_UserPrefab);
-
-                Debug.Log($"[UpdateTransform] Created player object for client´:{fromClient}");
             }
         });
     }
 
     private static void Log(MUCOLogMessage message)
     {
-        Debug.Log(message.Message);
+        Debug.Log(message.ToString());
     }
 }

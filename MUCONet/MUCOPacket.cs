@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace Phenomenal.MUCONet
+namespace PhenomenalViborg.MUCONet
 {
 	/// <summary>
 	/// Enum containing all internal packets identifiers used to specifiy server packages.

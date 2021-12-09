@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Phenomenal.MUCONet
+namespace PhenomenalViborg.MUCONet
 {
 	/// <summary>
 	/// Handles all "low-level" socket communication with the clients.
@@ -47,10 +47,10 @@ namespace Phenomenal.MUCONet
 		private int m_PlayerIDCounter = 0;
 
 		// User events and delegates
-		public delegate void OnClientConnectedDelegate();
+		public delegate void OnClientConnectedDelegate(MUCOClientInfo clientInfo);
 		public event OnClientConnectedDelegate OnClientConnectedEvent;
 
-		public delegate void OnClienttDisconnectedDelegate();
+		public delegate void OnClienttDisconnectedDelegate(MUCOClientInfo clientInfo);
 		public event OnClienttDisconnectedDelegate OnClientDisconnectedEvent;
 
 		/// <summary>
@@ -67,7 +67,7 @@ namespace Phenomenal.MUCONet
 		/// <param name="port">The port number of the socket endpoint.</param>
 		public void Start(int port)
 		{
-			MUCOLogger.Info("Starting server...");
+			MUCOLogger.Trace("Starting server...");
 
 			try
 			{
@@ -85,7 +85,7 @@ namespace Phenomenal.MUCONet
 				// Socket::Listen places the Socket in a listening state. The backlog parameter specifies the maximum length of the pending connections queue.
 				m_LocalSocket.Listen(4);
 
-				MUCOLogger.Info($"Successfully started server on port {port}.");
+				MUCOLogger.Info($"Started server on port {port}.");
 
 				// Begin an asynchronous operation to accept an incoming connection attempt.
 				m_LocalSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
@@ -103,7 +103,11 @@ namespace Phenomenal.MUCONet
 		public void Stop()
 		{
 			MUCOLogger.Info("Shutting down server...");
-			throw new NotImplementedException();
+			
+			foreach (KeyValuePair<int, MUCOClientInfo> clientInfo in ClientInfo)
+			{
+				Disconnect(clientInfo.Value);
+			}
 		}
 		
 		/// <summary>
@@ -159,7 +163,7 @@ namespace Phenomenal.MUCONet
 				return;
 			}
 
-			MUCOLogger.Info($"Successfully assigned a packet handler to packet identifier: {packetIdentifier}");
+			MUCOLogger.Trace($"Successfully assigned a packet handler to packet identifier: {packetIdentifier}");
 
 			m_PacketHandlers.Add(packetIdentifier, packetHandler);
 		}
@@ -176,7 +180,7 @@ namespace Phenomenal.MUCONet
 				// Begin an asynchronously operation to accept another incoming connection attempt.
 				m_LocalSocket.BeginAccept(new AsyncCallback(AcceptCallback), null);
 
-				MUCOLogger.Info($"Incoming connection from {clientSocket.RemoteEndPoint}...");
+				MUCOLogger.Trace($"Incoming connection from {clientSocket.RemoteEndPoint}...");
 
 				m_PlayerIDCounter++;
 
@@ -248,17 +252,6 @@ namespace Phenomenal.MUCONet
 					return;
 				}
 
-                {
-					int packetID = packet.ReadInt();
-
-					if(packetID == 1)
-                    {
-						float newX = packet.ReadFloat();
-						float newY = packet.ReadFloat();
-						MUCOLogger.Info($"client: {clientInfo}, clientID: {clientInfo.UniqueIdentifier}, x: {newX}, y: {newY}");
-					}
-				}
-
 				packet.SetReadOffset(0);
 				
 				HandlePacket(packet, clientInfo.UniqueIdentifier);
@@ -290,8 +283,8 @@ namespace Phenomenal.MUCONet
 			if (ClientInfo.ContainsKey(clientInfo.UniqueIdentifier))
             {
 				clientInfo.Disconnect();
+				OnClientDisconnectedEvent?.Invoke(clientInfo);
 				ClientInfo.Remove(clientInfo.UniqueIdentifier);
-				OnClientDisconnectedEvent?.Invoke();
 			}
 			else
             {
@@ -321,9 +314,9 @@ namespace Phenomenal.MUCONet
 		#region Internal package handlers
 		private void HandleWelcomeReceived(MUCOPacket packet, int fromClient)
 		{
-			MUCOLogger.Info("Welcome Received");
+			MUCOLogger.Trace("Welcome Received");
 		
-			OnClientConnectedEvent?.Invoke();
+			OnClientConnectedEvent?.Invoke(ClientInfo[fromClient]);
 		}
 		#endregion
 	}

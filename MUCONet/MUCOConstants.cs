@@ -1,4 +1,4 @@
-﻿namespace Phenomenal.MUCONet
+﻿namespace PhenomenalViborg.MUCONet
 {
 	/// <summary>
 	/// Holds shared configuration variables that won't change at runtime.

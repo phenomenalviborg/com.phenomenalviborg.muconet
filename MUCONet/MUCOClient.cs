@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 
-namespace Phenomenal.MUCONet
+namespace PhenomenalViborg.MUCONet
 {
 	/// <summary>
 	/// Handles all "low-level" socket communication with the server.
@@ -18,7 +18,6 @@ namespace Phenomenal.MUCONet
 		private Socket m_LocalSocket;
 		private bool m_IsConnected = false;
 
-		// User events and delegates
 		public delegate void OnConnectedDelegate();
 		public event OnConnectedDelegate OnConnectedEvent;
 
@@ -161,7 +160,6 @@ namespace Phenomenal.MUCONet
 				int bytesReceived = m_LocalSocket.EndReceive(asyncResult);
 
 				MUCOLogger.Trace($"Receiving package from server.");
-
 				if (bytesReceived <= 0)
 				{
 					Disconnect();
