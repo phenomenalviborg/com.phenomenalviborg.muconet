@@ -54,7 +54,7 @@ namespace PhenomenalViborg.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Trace(string message)
 		{
-			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Trace)
+			if ((int)MUCOLogMessage.MUCOLogLevel.Trace >= (int)LogLevel)
 			{
 				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Trace, message));
 			}
@@ -66,7 +66,7 @@ namespace PhenomenalViborg.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Debug(string message)
 		{
-			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Debug)
+			if ((int)MUCOLogMessage.MUCOLogLevel.Debug >= (int)LogLevel)
 			{
 				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Debug, message));
 			}
@@ -78,7 +78,7 @@ namespace PhenomenalViborg.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Info(string message)
 		{
-			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Info)
+			if ((int)MUCOLogMessage.MUCOLogLevel.Info >= (int)LogLevel)
 			{
 				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Info, message));
 			}
@@ -90,7 +90,7 @@ namespace PhenomenalViborg.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Warn(string message)
 		{
-			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Warn)
+			if ((int)MUCOLogMessage.MUCOLogLevel.Warn >= (int)LogLevel)
 			{
 				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Warn, message));
 			}
@@ -102,7 +102,7 @@ namespace PhenomenalViborg.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Error(string message)
         {
-			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Error)
+			if ((int)MUCOLogMessage.MUCOLogLevel.Error >= (int)LogLevel)
 			{
 				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Error, message));
 			}
@@ -114,7 +114,7 @@ namespace PhenomenalViborg.MUCONet
 		/// <param name="message">The message to log.</param>
 		public static void Fatal(string message)
 		{
-			if ((int)LogLevel >= (int)MUCOLogMessage.MUCOLogLevel.Fatal)
+			if ((int)MUCOLogMessage.MUCOLogLevel.Fatal >= (int)LogLevel)
 			{
 				LogEvent?.Invoke(new MUCOLogMessage(MUCOLogMessage.MUCOLogLevel.Fatal, message));
 			}

@@ -282,8 +282,8 @@ namespace PhenomenalViborg.MUCONet
 
 			if (ClientInfo.ContainsKey(clientInfo.UniqueIdentifier))
             {
-				clientInfo.Disconnect();
 				OnClientDisconnectedEvent?.Invoke(clientInfo);
+				clientInfo.Disconnect();
 				ClientInfo.Remove(clientInfo.UniqueIdentifier);
 			}
 			else
