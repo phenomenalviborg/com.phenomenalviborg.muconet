@@ -141,7 +141,7 @@ namespace PhenomenalViborg.MUCONet
 			{
 				foreach (KeyValuePair<int, MUCOClientInfo> keyValuePair in ClientInfo)
 				{
-					SendPacket(keyValuePair.Value, packet, true);
+					SendPacket(keyValuePair.Value, packet, reliable);
 				}
 			}
 			else
@@ -149,6 +149,26 @@ namespace PhenomenalViborg.MUCONet
 				throw new NotImplementedException();
 			}
 		}
+
+		public void SendPacketToAllExceptOne(MUCOPacket packet, MUCOClientInfo exception, bool reliable = true)
+        {
+			if (reliable)
+            {
+				foreach(KeyValuePair<int, MUCOClientInfo> keyValuePair in ClientInfo)
+                {
+					if (keyValuePair.Value.UniqueIdentifier == exception.UniqueIdentifier)
+                    {
+						continue;
+                    }
+
+					SendPacket(keyValuePair.Value, packet, reliable);
+                }
+            }
+			else
+            {
+				throw new NotImplementedException();
+            }
+        }
 
 		/// <summary>
 		/// Registers a packet handler to specifed packet identifier.
