@@ -33,7 +33,7 @@ namespace PhenomenalViborg.MUCONet
 
 			public override string ToString()
             {
-				return $"client {UniqueIdentifier} ({RemoteSocket.RemoteEndPoint})";
+				return $"client {UniqueIdentifier}";
             }
 
 		}
