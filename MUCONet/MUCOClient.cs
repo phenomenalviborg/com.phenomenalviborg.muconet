@@ -18,6 +18,8 @@ namespace PhenomenalViborg.MUCONet
 		private Socket m_LocalSocket;
 		private bool m_IsConnected = false;
 
+		public int UniqueIdentifier { get; private set; } = -1;
+
 		public delegate void OnConnectedDelegate();
 		public event OnConnectedDelegate OnConnectedEvent;
 
@@ -226,6 +228,7 @@ namespace PhenomenalViborg.MUCONet
         private void HandleWelcome(MUCOPacket packet)
 		{
 			int assignedClientID = packet.ReadInt();
+			UniqueIdentifier = assignedClientID;
 			MUCOLogger.Info($"Welcome, {assignedClientID}");
 
 			OnConnectedEvent?.Invoke();
