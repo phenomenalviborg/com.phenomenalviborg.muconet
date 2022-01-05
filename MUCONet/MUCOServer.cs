@@ -10,6 +10,18 @@ namespace PhenomenalViborg.MUCONet
 	/// </summary>
 	public class MUCOServer
 	{
+		public struct MUCOServerStatistics
+		{
+			public UInt32 PacketsSent;
+			public UInt32 PacketsReceived;
+		}
+
+		public struct MUCOClientStatistics
+		{
+			public UInt32 PacketsSent;
+			public UInt32 PacketsReceived;
+		}
+
 		/// <summary>
 		/// Used for storeing information about a remote client.
 		/// </summary>
@@ -31,22 +43,32 @@ namespace PhenomenalViborg.MUCONet
 				RemoteSocket.Close();
             }
 
+			public string GetAdresse()
+            {
+				return RemoteSocket.Connected ? ((IPEndPoint)RemoteSocket.RemoteEndPoint).Address.ToString() : "ERROR";
+			}
+
+			public int GetPort()
+			{
+				return RemoteSocket.Connected ? ((IPEndPoint)RemoteSocket.RemoteEndPoint).Port : -1;
+			}
+
 			public override string ToString()
             {
 				return $"client {UniqueIdentifier}";
             }
-
 		}
-
 
 		public delegate void PacketHandler(MUCOPacket packet, int fromClient);
 
 		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
+		public MUCOServerStatistics ServerStatistics = new MUCOServerStatistics();
+		public Dictionary<int, MUCOClientStatistics> ClientStatistics = new Dictionary<int, MUCOClientStatistics>();
+
 		private Socket m_LocalSocket = null;
 		private int m_PlayerIDCounter = 0;
-		public int m_Port { get; private set; } = 0;
 
 		// User events and delegates
 		public delegate void OnClientConnectedDelegate(MUCOClientInfo clientInfo);
@@ -70,8 +92,6 @@ namespace PhenomenalViborg.MUCONet
 		public void Start(int port)
 		{
 			MUCOLogger.Trace("Starting server...");
-
-			m_Port = port;
 
 			try
 			{
@@ -101,15 +121,6 @@ namespace PhenomenalViborg.MUCONet
 		}
 
 		/// <summary>
-		/// Gets the port that the server is running on.
-		/// If the server is not running, return -1.
-		/// </summary>
-		public int GetPort()
-        {
-			return m_LocalSocket.Connected ? ((IPEndPoint)m_LocalSocket.LocalEndPoint).Port : -1;
-		}
-
-		/// <summary>
 		/// Stops the server.
 		/// Frees all runtime server data and disconnects all connected clients.
 		/// </summary>
@@ -122,7 +133,16 @@ namespace PhenomenalViborg.MUCONet
 				Disconnect(clientInfo.Value);
 			}
 		}
-		
+
+		/// <summary>
+		/// Gets the port that the server is currently running on.
+		/// If the server is not running, return -1.
+		/// </summary>
+		public int GetPort()
+		{
+			return m_LocalSocket.Connected ? ((IPEndPoint)m_LocalSocket.LocalEndPoint).Port : -1;
+		}
+
 		/// <summary>
 		/// Sends a packet to a specific client.
 		/// </summary>
@@ -220,6 +240,7 @@ namespace PhenomenalViborg.MUCONet
 				// Create and add the client info struct to the ClientInfo dictionary.
 				MUCOClientInfo clientInfo = new MUCOClientInfo(m_PlayerIDCounter, clientSocket);
 				ClientInfo.Add(m_PlayerIDCounter, clientInfo);
+				ClientStatistics.Add(m_PlayerIDCounter, new MUCOClientStatistics());
 
 				// Send welcome packet
 				MUCOPacket welcomePacket = new MUCOPacket((int)MUCOInternalServerPacketIdentifiers.Welcome);
@@ -244,6 +265,16 @@ namespace PhenomenalViborg.MUCONet
 			{
 				MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState; ;
 				clientInfo.RemoteSocket.EndSend(asyncResult);
+				ServerStatistics.PacketsSent++;
+
+				if (ClientStatistics.ContainsKey(clientInfo.UniqueIdentifier))
+                {
+					// The indexer, for some reason, returns a copy of the value and we therefor need to first copy the value from the dictionary to a local variable, and then set it back into the dictionary after the modification... Thx c#...
+					// ClientStatistics[clientInfo.UniqueIdentifier].PacketsReceived++;
+					MUCOClientStatistics clientStatistic = ClientStatistics[clientInfo.UniqueIdentifier];
+					clientStatistic.PacketsSent++;
+					ClientStatistics[clientInfo.UniqueIdentifier] = clientStatistic;
+				}
 			}
 			catch (Exception exception)
 			{
@@ -268,6 +299,16 @@ namespace PhenomenalViborg.MUCONet
 				}
 				
 				MUCOLogger.Trace($"Receiving package from {clientInfo}.");
+				ServerStatistics.PacketsReceived++;
+
+				if (ClientStatistics.ContainsKey(clientInfo.UniqueIdentifier))
+				{
+					// The indexer, for some reason, returns a copy of the value and we therefor need to first copy the value from the dictionary to a local variable, and then set it back into the dictionary after the modification... Thx c#...
+					// ClientStatistics[clientInfo.UniqueIdentifier].PacketsReceived++;
+					MUCOClientStatistics clientStatistic = ClientStatistics[clientInfo.UniqueIdentifier];
+					clientStatistic.PacketsReceived++;
+					ClientStatistics[clientInfo.UniqueIdentifier] = clientStatistic;
+				}
 
 				byte[] dataReceived = new byte[bytesReceived];
 				Array.Copy(clientInfo.ReceiveBuffer, dataReceived, bytesReceived);
@@ -318,6 +359,11 @@ namespace PhenomenalViborg.MUCONet
 				OnClientDisconnectedEvent?.Invoke(clientInfo);
 				clientInfo.Disconnect();
 				ClientInfo.Remove(clientInfo.UniqueIdentifier);
+				
+				if (ClientStatistics.ContainsKey(clientInfo.UniqueIdentifier))
+				{
+					ClientStatistics.Remove(clientInfo.UniqueIdentifier);
+				}
 			}
 			else
             {
