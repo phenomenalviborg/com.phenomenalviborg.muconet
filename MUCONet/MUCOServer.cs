@@ -38,6 +38,7 @@ namespace PhenomenalViborg.MUCONet
 
 		}
 
+
 		public delegate void PacketHandler(MUCOPacket packet, int fromClient);
 
 		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
@@ -45,6 +46,7 @@ namespace PhenomenalViborg.MUCONet
 
 		private Socket m_LocalSocket = null;
 		private int m_PlayerIDCounter = 0;
+		public int m_Port { get; private set; } = 0;
 
 		// User events and delegates
 		public delegate void OnClientConnectedDelegate(MUCOClientInfo clientInfo);
@@ -68,6 +70,8 @@ namespace PhenomenalViborg.MUCONet
 		public void Start(int port)
 		{
 			MUCOLogger.Trace("Starting server...");
+
+			m_Port = port;
 
 			try
 			{
@@ -94,6 +98,15 @@ namespace PhenomenalViborg.MUCONet
 			{
 				MUCOLogger.Error($"Failed to create and/or configure the Socket: {exception.Message}");
 			}
+		}
+
+		/// <summary>
+		/// Gets the port that the server is running on.
+		/// If the server is not running, return -1.
+		/// </summary>
+		public int GetPort()
+        {
+			return m_LocalSocket.Connected ? ((IPEndPoint)m_LocalSocket.LocalEndPoint).Port : -1;
 		}
 
 		/// <summary>
