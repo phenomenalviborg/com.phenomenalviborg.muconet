@@ -143,6 +143,17 @@ namespace PhenomenalViborg.MUCONet
 			m_Data.AddRange(BitConverter.GetBytes(value));
 		}
 
+
+		/// <summary>
+		/// Writes a string to the packet data.
+		/// </summary>
+		/// <param name="value">The string to add.</param>
+		public void WriteString(string value)
+		{
+			WriteInt(value.Length); // Add the length of the string to the packet
+			m_Data.AddRange(System.Text.Encoding.ASCII.GetBytes(value));
+		}
+
 		/// <summary>
 		/// Reads a byte array from the packet data. 
 		/// </summary>
@@ -210,6 +221,30 @@ namespace PhenomenalViborg.MUCONet
 			{
 				MUCOLogger.Error("Could not read value of type 'float', value was out of range.");
 				return 0.0f;
+			}
+		}
+
+		/// <summary>
+		/// Reads a string from the packet data. 
+		/// </summary>
+		/// <param name="moveReadOffset">Whether or not to move the buffer's read position offset.</param>
+		/// <returns>The requested string.</returns>
+		public string ReadString(bool moveReadPos = true)
+		{
+			try
+			{
+				int length = ReadInt(); // Get the length of the string
+				string value = System.Text.Encoding.ASCII.GetString(m_Data.ToArray(), m_ReadOffset, length);
+				if (moveReadPos && value.Length > 0)
+				{
+					// If moveReadPos is true string is not empty
+					m_ReadOffset += length; // Increase readPos by the length of the string
+				}
+				return value; // Return the string
+			}
+			catch
+			{
+				throw new Exception("Could not read value of type 'string'!");
 			}
 		}
 
