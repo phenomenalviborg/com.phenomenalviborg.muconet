@@ -1,0 +1,17 @@
+{
+  "name": "com.phenomenalviborg.muconet",
+  "version": "0.4.7",
+  "displayName": "MUCONET",
+  "unity": "2020.1",
+  "documentationUrl": "",
+  "changelogUrl": "",
+  "licensesUrl": "",
+  "keywords": [
+    "Phenomenal",
+    "MUCO"
+  ],
+  "author": {
+    "name": "Storm Søndergaard"
+  },
+  "dependencies": {}
+}
