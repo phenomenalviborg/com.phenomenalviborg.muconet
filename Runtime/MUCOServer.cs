@@ -59,7 +59,7 @@ namespace PhenomenalViborg.MUCONet
 			public UInt32 PacketsReceived;
 		}
 
-		public Dictionary<int, MUCORemoteClient> ClientInfo { get; private set; } = new Dictionary<int, MUCORemoteClient>();'
+		public Dictionary<int, MUCORemoteClient> ClientInfo { get; private set; } = new Dictionary<int, MUCORemoteClient>();
 
 		public delegate void PacketHandler(MUCOPacket packet, int fromClient);
 		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
