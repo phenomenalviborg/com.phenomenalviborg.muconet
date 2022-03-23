@@ -10,6 +10,43 @@ namespace PhenomenalViborg.MUCONet
 	/// </summary>
 	public class MUCOServer
 	{
+		/// <summary>
+		/// Used for storeing information about a remote client.
+		/// </summary>
+		public struct MUCORemoteClient
+		{
+			public int UniqueIdentifier;
+			public Socket RemoteSocket;
+			public byte[] ReceiveBuffer;
+
+			public MUCORemoteClient(int uniqueIdentifier, Socket remoteSocket)
+			{
+				UniqueIdentifier = uniqueIdentifier;
+				RemoteSocket = remoteSocket;
+				ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
+			}
+
+			public void Disconnect()
+			{
+				RemoteSocket.Close();
+			}
+
+			public string GetAddress()
+			{
+				return RemoteSocket.Connected ? ((IPEndPoint)RemoteSocket.RemoteEndPoint).Address.ToString() : "ERROR";
+			}
+
+			public int GetPort()
+			{
+				return RemoteSocket.Connected ? ((IPEndPoint)RemoteSocket.RemoteEndPoint).Port : -1;
+			}
+
+			public override string ToString()
+			{
+				return $"client {UniqueIdentifier}";
+			}
+		}
+
 		public struct MUCOServerStatistics
 		{
 			public UInt32 PacketsSent;
@@ -22,46 +59,9 @@ namespace PhenomenalViborg.MUCONet
 			public UInt32 PacketsReceived;
 		}
 
-		/// <summary>
-		/// Used for storeing information about a remote client.
-		/// </summary>
-		public struct MUCOClientInfo
-		{
-			public int UniqueIdentifier;
-			public Socket RemoteSocket;
-			public byte[] ReceiveBuffer;
-
-			public MUCOClientInfo(int uniqueIdentifier, Socket remoteSocket)
-			{
-				UniqueIdentifier = uniqueIdentifier;
-				RemoteSocket = remoteSocket;
-				ReceiveBuffer = new byte[MUCOConstants.RECEIVE_BUFFER_SIZE];
-			}
-
-			public void Disconnect()
-            {
-				RemoteSocket.Close();
-            }
-
-			public string GetAdresse()
-            {
-				return RemoteSocket.Connected ? ((IPEndPoint)RemoteSocket.RemoteEndPoint).Address.ToString() : "ERROR";
-			}
-
-			public int GetPort()
-			{
-				return RemoteSocket.Connected ? ((IPEndPoint)RemoteSocket.RemoteEndPoint).Port : -1;
-			}
-
-			public override string ToString()
-            {
-				return $"client {UniqueIdentifier}";
-            }
-		}
+		public Dictionary<int, MUCORemoteClient> ClientInfo { get; private set; } = new Dictionary<int, MUCORemoteClient>();'
 
 		public delegate void PacketHandler(MUCOPacket packet, int fromClient);
-
-		public Dictionary<int, MUCOClientInfo> ClientInfo { get; private set; } = new Dictionary<int, MUCOClientInfo>();
 		private Dictionary<int, PacketHandler> m_PacketHandlers = new Dictionary<int, PacketHandler>();
 
 		public MUCOServerStatistics ServerStatistics = new MUCOServerStatistics();
@@ -71,10 +71,10 @@ namespace PhenomenalViborg.MUCONet
 		private int m_PlayerIDCounter = 0;
 
 		// User events and delegates
-		public delegate void OnClientConnectedDelegate(MUCOClientInfo clientInfo);
+		public delegate void OnClientConnectedDelegate(MUCORemoteClient clientInfo);
 		public event OnClientConnectedDelegate OnClientConnectedEvent;
 
-		public delegate void OnClienttDisconnectedDelegate(MUCOClientInfo clientInfo);
+		public delegate void OnClienttDisconnectedDelegate(MUCORemoteClient clientInfo);
 		public event OnClienttDisconnectedDelegate OnClientDisconnectedEvent;
 
 		/// <summary>
@@ -128,7 +128,7 @@ namespace PhenomenalViborg.MUCONet
 		{
 			MUCOLogger.Info("Shutting down server...");
 			
-			foreach (KeyValuePair<int, MUCOClientInfo> clientInfo in ClientInfo)
+			foreach (KeyValuePair<int, MUCORemoteClient> clientInfo in ClientInfo)
 			{
 				Disconnect(clientInfo.Value);
 			}
@@ -143,13 +143,34 @@ namespace PhenomenalViborg.MUCONet
 			return m_LocalSocket.Connected ? ((IPEndPoint)m_LocalSocket.LocalEndPoint).Port : -1;
 		}
 
+		public string GetAddress()
+        {
+			return m_LocalSocket.LocalEndPoint.ToString();
+        }
+
+		public int GetConnectionCount()
+        {
+			return ClientInfo.Count;
+		}
+
+		public uint GetPacketsSendCount()
+        {
+			return ServerStatistics.PacketsSent;
+        }
+
+		public uint GetPacketsReceivedCount()
+        {
+			return ServerStatistics.PacketsReceived;
+        }
+
+
 		/// <summary>
 		/// Sends a packet to a specific client.
 		/// </summary>
 		/// <param name="receiver">The client to send the packet to.</param>
 		/// <param name="packet">The packet to send.</param>
 		/// <param name="reliable">Reliable packets are sent using TCP, non-reliable packets use UDP.</param>
-		public void SendPacket(MUCOClientInfo receiver, MUCOPacket packet, bool reliable = true)
+		public void SendPacket(MUCORemoteClient receiver, MUCOPacket packet, bool reliable = true)
 		{
 			if (reliable)
 			{
@@ -172,7 +193,7 @@ namespace PhenomenalViborg.MUCONet
 		{
 			if (reliable)
 			{
-				foreach (KeyValuePair<int, MUCOClientInfo> keyValuePair in ClientInfo)
+				foreach (KeyValuePair<int, MUCORemoteClient> keyValuePair in ClientInfo)
 				{
 					SendPacket(keyValuePair.Value, packet, reliable);
 				}
@@ -183,11 +204,11 @@ namespace PhenomenalViborg.MUCONet
 			}
 		}
 
-		public void SendPacketToAllExceptOne(MUCOPacket packet, MUCOClientInfo exception, bool reliable = true)
+		public void SendPacketToAllExceptOne(MUCOPacket packet, MUCORemoteClient exception, bool reliable = true)
         {
 			if (reliable)
             {
-				foreach(KeyValuePair<int, MUCOClientInfo> keyValuePair in ClientInfo)
+				foreach(KeyValuePair<int, MUCORemoteClient> keyValuePair in ClientInfo)
                 {
 					if (keyValuePair.Value.UniqueIdentifier == exception.UniqueIdentifier)
                     {
@@ -238,7 +259,7 @@ namespace PhenomenalViborg.MUCONet
 				m_PlayerIDCounter++;
 
 				// Create and add the client info struct to the ClientInfo dictionary.
-				MUCOClientInfo clientInfo = new MUCOClientInfo(m_PlayerIDCounter, clientSocket);
+				MUCORemoteClient clientInfo = new MUCORemoteClient(m_PlayerIDCounter, clientSocket);
 				ClientInfo.Add(m_PlayerIDCounter, clientInfo);
 				ClientStatistics.Add(m_PlayerIDCounter, new MUCOClientStatistics());
 
@@ -263,7 +284,7 @@ namespace PhenomenalViborg.MUCONet
 		{
 			try
 			{
-				MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState; ;
+				MUCORemoteClient clientInfo = (MUCORemoteClient)asyncResult.AsyncState; ;
 				clientInfo.RemoteSocket.EndSend(asyncResult);
 				ServerStatistics.PacketsSent++;
 
@@ -287,7 +308,7 @@ namespace PhenomenalViborg.MUCONet
 		/// </summary>
 		private void ReceiveCallback(IAsyncResult asyncResult)
 		{
-			MUCOClientInfo clientInfo = (MUCOClientInfo)asyncResult.AsyncState;
+			MUCORemoteClient clientInfo = (MUCORemoteClient)asyncResult.AsyncState;
 		
 			try
 			{
@@ -350,7 +371,7 @@ namespace PhenomenalViborg.MUCONet
 			}
 		}
 
-		private void Disconnect(MUCOClientInfo clientInfo)
+		private void Disconnect(MUCORemoteClient clientInfo)
         {
 			MUCOLogger.Info($"Disconnecting {clientInfo}");
 
