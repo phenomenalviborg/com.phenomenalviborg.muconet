@@ -89,6 +89,14 @@ namespace PhenomenalViborg.MUCONet
 		}
 
 		/// <summary>
+		/// Returns the current read offset.
+		/// </summary>
+		public int GetReadOffset()
+		{
+			return m_ReadOffset;
+		}
+
+		/// <summary>
 		/// Gets the size of the packet data.
 		/// </summary>
 		/// <returns>The size of the packet data in bytes.</returns>
