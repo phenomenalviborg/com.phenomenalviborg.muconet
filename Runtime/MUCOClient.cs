@@ -87,6 +87,8 @@ namespace PhenomenalViborg.MUCONet
 		/// <param name="reliable">Reliable packets are sent using TCP, non-reliable packets use UDP.</param>
 		public void SendPacket(MUCOPacket packet, bool reliable = true)
 		{
+			if (!m_IsConnected) return;
+
 			if (reliable)
 			{
 				MUCOLogger.Trace($"Sending a packet to the server.");
